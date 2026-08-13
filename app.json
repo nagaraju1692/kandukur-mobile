@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "ManaKandukur Mobile",
+    "slug": "nagaraju",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "sdkVersion": "54.0.0",
+    "version": "1.0.0",
+    "android": {
+      "package": "com.manakandukur.directory",
+      "versionCode": 1
+    },
+    "extra": {
+      "eas": {
+        "projectId": "d8947819-58a2-49fe-8376-efa481f3d6fc"
+      }
+    },
+    "owner": "yanamalanagarajus-team"
+  }
+}
