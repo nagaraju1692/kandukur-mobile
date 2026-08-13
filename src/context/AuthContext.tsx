@@ -1,0 +1,106 @@
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+export type UserProfile = {
+  name: string;
+  phone: string;
+};
+
+type AuthContextValue = {
+  user: UserProfile | null;
+  favorites: string[];
+  isLoggedIn: boolean;
+  login: (profile: UserProfile) => Promise<void>;
+  logout: () => Promise<void>;
+  toggleFavorite: (businessId: string) => Promise<void>;
+};
+
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [favorites, setFavorites] = useState<string[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadData = async () => {
+      try {
+        const [savedUser, savedFavorites] = await Promise.all([
+          AsyncStorage.getItem('mana-kandukur-mobile-user'),
+          AsyncStorage.getItem('mana-kandukur-mobile-favorites'),
+        ]);
+
+        if (!isMounted) return;
+
+        if (savedUser) {
+          setUser(JSON.parse(savedUser) as UserProfile);
+        }
+
+        if (savedFavorites) {
+          const parsed = JSON.parse(savedFavorites) as string[];
+          if (Array.isArray(parsed)) setFavorites(parsed);
+        }
+      } catch {
+        if (isMounted) {
+          setUser(null);
+          setFavorites([]);
+        }
+      }
+    };
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      AsyncStorage.setItem('mana-kandukur-mobile-user', JSON.stringify(user));
+    } else {
+      AsyncStorage.removeItem('mana-kandukur-mobile-user');
+    }
+  }, [user]);
+
+  useEffect(() => {
+    AsyncStorage.setItem('mana-kandukur-mobile-favorites', JSON.stringify(favorites));
+  }, [favorites]);
+
+  const login = async (profile: UserProfile) => {
+    setUser(profile);
+  };
+
+  const logout = async () => {
+    setUser(null);
+    setFavorites([]);
+  };
+
+  const toggleFavorite = async (businessId: string) => {
+    setFavorites((current) => (
+      current.includes(businessId)
+        ? current.filter((id) => id !== businessId)
+        : [...current, businessId]
+    ));
+  };
+
+  const value = useMemo<AuthContextValue>(() => ({
+    user,
+    favorites,
+    isLoggedIn: !!user,
+    login,
+    logout,
+    toggleFavorite,
+  }), [user, favorites]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
