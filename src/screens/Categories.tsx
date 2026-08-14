@@ -51,6 +51,13 @@ export default function Categories({ navigation }: any) {
   return (
     <View style={styles.screen}>
       <MobileHeader navigation={navigation} />
+      <View style={styles.pageHeader}>
+        <Pressable style={styles.pageBack} onPress={() => navigation.goBack()}><Text style={styles.pageBackText}>←</Text></Pressable>
+        <View style={styles.pageHeaderCopy}>
+          <Text style={styles.pageKicker}>{t('CATEGORIES', 'వర్గాలు')}</Text>
+          <Text style={styles.pageTitle}>{t('Categories', 'వర్గాలు')}</Text>
+        </View>
+      </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <DirectoryState loading={loading} error={error} onRetry={retry} />
@@ -89,25 +96,43 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    paddingTop: 28,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-    backgroundColor: '#4A4AD5',
+  pageHeader: {
+    minHeight: 72,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#EFEAFE',
   },
-  kicker: {
-    color: '#D7D9FF',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+  pageBack: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    borderRadius: 18,
+    backgroundColor: '#E1D9FF',
   },
-  title: {
-    marginTop: 4,
-    color: '#FFF',
-    fontSize: 32,
+  pageBackText: {
+    color: '#4A4AD5',
+    fontSize: 22,
+    lineHeight: 24,
+    textAlign: 'center',
+  },
+  pageHeaderCopy: {
+    flex: 1,
+  },
+  pageKicker: {
+    color: '#5B52D1',
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: -0.8,
+    letterSpacing: 1,
+  },
+  pageTitle: {
+    marginTop: 2,
+    color: '#2F2F43',
+    fontSize: 22,
+    fontWeight: '800',
   },
   content: {
     paddingHorizontal: 18,

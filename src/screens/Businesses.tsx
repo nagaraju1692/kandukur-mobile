@@ -14,6 +14,11 @@ import DirectoryState from './DirectoryState'
 import { colors } from '../ui/theme'
 
 const subcategoryIcons: Record<string, string> = {
+  Education: '🎓', 'Degree colleges': '🎓', 'Engineering colleges': '🎓', Intermediate: '🎓', 'Polytechnic colleges': '🎓', Schools: '🎓', Hospitals: '✚', 'Medical shops': '✦', Restaurants: '⌂', Lodges: '▣', 'Bus stand': '▤',
+  'Police station': '⌁', Temples: '◉', Banks: '₹', 'Movie Theaters': '▶', 'Shopping clothes': '◈', 'Retail marts': '▦',
+  'Beauty clinics': '✧', 'Real Estate': '🏘️', Agriculture: '🌾', 'Food & Meat Markets': '🥬', 'Rental Transport': '🚚',
+  'Tourist Places': '🗺️', 'Rental Houses': '🏠', 'Construction Materials': '🧱', 'Government Offices': '🏛️',
+  'Cold Storages': '❄️', 'Manpower Services': '🛠️', 'Show Rooms': '🏬', 'Bike & Car Mechanics': '🔧',
   'Plots for Sale': '📐', 'Property Agents': '🤝', 'Tobacco Boards': '🌿', 'Vegetable Markets': '🥕',
   'Fish Markets': '🐟', 'Fruit Markets': '🍎', 'Mutton Shops': '🍖', 'Chicken Shops': '🍗', 'Sweet Shops': '🍬',
   'Cars for Rent': '🚗', 'Autos for Rent': '🛺', 'Lorries for Rent': '🚛', 'Tractors for Rent': '🚜', 'JCBs for Rent': '🏗️',
@@ -21,6 +26,17 @@ const subcategoryIcons: Record<string, string> = {
   'MRO Office': '🏢', 'Municipality Office': '🏛️', 'Registration Office': '📄', Mestri: '👷', Plumber: '🔧', Electricians: '⚡',
   'Tiles Work': '◼️', 'False Ceiling': '🏠', 'Bore Points': '💧', 'Bike Show Rooms': '🏍️', 'Car Show Rooms': '🚘', 'Vehicle Wash': '🚿',
   'Computer Training': '💻', 'Spoken English': '🗣️', 'Driving Schools': '🚗', 'Skill Development': '🧰',
+  'Training Institutions': '🎓', 'RealEstate': '▣', 'Agricultural info': '🌾', 'School': '🎓', 'College': '🎓',
+}
+
+const getSubcategoryIcon = (name: string) => {
+  const trimmed = (name || '').trim()
+  if (!trimmed) return '📌'
+  const exact = subcategoryIcons[trimmed]
+  if (exact) return exact
+  const normalized = trimmed.toLowerCase().replace(/\s+/g, ' ')
+  const match = Object.entries(subcategoryIcons).find(([key]) => key.toLowerCase().replace(/\s+/g, ' ') === normalized)
+  return match ? match[1] : '📌'
 }
 
 export default function Businesses({ navigation, route }: any) {
@@ -80,7 +96,7 @@ export default function Businesses({ navigation, route }: any) {
               style={styles.listRow}
               onPress={() => navigation.navigate('Businesses', { categoryId: item.id })}
             >
-              <View style={styles.subcategoryIcon}><Text style={styles.subcategoryIconText}>{subcategoryIcons[item.name] || '📌'}</Text></View>
+              <View style={styles.subcategoryIcon}><Text style={styles.subcategoryIconText}>{getSubcategoryIcon(item.name)}</Text></View>
               <View style={styles.subcategoryCopy}><Text style={styles.listRowText}>{categoryLabel(item.name)}</Text><Text style={styles.subcategoryCount}>{businesses.filter((business) => business.categoryId === item.id).length} {t('Listings', 'లిస్టింగ్‌లు')}</Text></View>
               <Text style={styles.listArrow}>›</Text>
             </Pressable>
@@ -155,27 +171,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  subHeader: { minHeight: 80, paddingHorizontal: 14, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', backgroundColor: '#4A4AD5' },
-  headerBack: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', marginRight: 12, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.18)' },
-  headerBackText: { color: '#FFF', fontSize: 24, lineHeight: 27, textAlign: 'center' },
+  subHeader: { minHeight: 72, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFEAFE' },
+  headerBack: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginRight: 10, borderRadius: 18, backgroundColor: '#E1D9FF' },
+  headerBackText: { color: '#4A4AD5', fontSize: 22, lineHeight: 24, textAlign: 'center' },
   kicker: {
-    color: '#D7D9FF',
-    fontSize: 12,
-    fontWeight: '700',
+    color: '#5B52D1',
+    fontSize: 10,
+    fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   headerTitle: {
-    color: '#FFF',
+    color: '#2F2F43',
     marginTop: 0,
-    fontSize: 30,
+    fontSize: 22,
     fontWeight: '800',
-    letterSpacing: -0.8,
-    lineHeight: 46,
+    letterSpacing: -0.4,
+    lineHeight: 28,
   },
   headerCopy: { flex: 1 },
-  headerKicker: { color: '#D7D9FF', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  headerCount: { color: '#FFF', fontSize: 11, fontWeight: '800', marginLeft: 8 },
+  headerKicker: { color: '#5B52D1', fontSize: 9, fontWeight: '800', letterSpacing: 1 },
+  headerCount: { color: '#4A4AD5', fontSize: 11, fontWeight: '800', marginLeft: 8 },
   listContent: {
     paddingHorizontal: 18,
     paddingTop: 20,

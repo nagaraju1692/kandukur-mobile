@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import BottomNav from './BottomNav';
+import MobileHeader from './MobileHeader';
 import { useLanguage } from '../context/LanguageContext';
 import { fetchJson } from '../services/api';
 import { useSubmittedListings } from '../context/SubmittedListingsContext';
@@ -87,8 +88,15 @@ export default function Profile({ navigation }: any) {
   if (!isLoggedIn) {
     return (
       <View style={styles.screen}>
+        <MobileHeader navigation={navigation} />
         <View style={styles.pageHeader}>
-          <View><Text style={styles.pageKicker}>{t('ACCOUNT', 'ఖాతా')}</Text><Text style={styles.pageTitle}>{t('Profile', 'ప్రొఫైల్')}</Text></View>
+          <View style={styles.pageHeaderLeft}>
+            <Pressable style={styles.pageBack} onPress={() => navigation.goBack()}><Text style={styles.pageBackText}>←</Text></Pressable>
+            <View>
+              <Text style={styles.pageKicker}>{t('ACCOUNT', 'ఖాతా')}</Text>
+              <Text style={styles.pageTitle}>{t('Profile', 'ప్రొఫైల్')}</Text>
+            </View>
+          </View>
           <Pressable style={styles.settings} onPress={() => Alert.alert(t('Profile settings', 'ప్రొఫైల్ సెట్టింగ్స్'), t('Profile settings will be available soon.', 'ప్రొఫైల్ సెట్టింగ్స్ త్వరలో అందుబాటులో ఉంటాయి.'))}><Text style={styles.settingsText}>⚙</Text></Pressable>
         </View>
 
@@ -132,8 +140,15 @@ export default function Profile({ navigation }: any) {
 
   return (
     <View style={styles.screen}>
+      <MobileHeader navigation={navigation} />
       <View style={styles.pageHeader}>
-        <View><Text style={styles.pageKicker}>{t('ACCOUNT', 'ఖాతా')}</Text><Text style={styles.pageTitle}>{t('Profile', 'ప్రొఫైల్')}</Text></View>
+        <View style={styles.pageHeaderLeft}>
+          <Pressable style={styles.pageBack} onPress={() => navigation.goBack()}><Text style={styles.pageBackText}>←</Text></Pressable>
+          <View>
+            <Text style={styles.pageKicker}>{t('ACCOUNT', 'ఖాతా')}</Text>
+            <Text style={styles.pageTitle}>{t('Profile', 'ప్రొఫైల్')}</Text>
+          </View>
+        </View>
         <Pressable style={styles.settings} onPress={() => Alert.alert(t('Profile settings', 'ప్రొఫైల్ సెట్టింగ్స్'), t('Profile settings will be available soon.', 'ప్రొఫైల్ సెట్టింగ్స్ త్వరలో అందుబాటులో ఉంటాయి.'))}><Text style={styles.settingsText}>⚙</Text></Pressable>
       </View>
 
@@ -241,11 +256,14 @@ const styles = StyleSheet.create({
     paddingBottom: 22,
     backgroundColor: '#4A4AD5',
   },
-  pageHeader: { minHeight: 86, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 18, backgroundColor: '#514BD5' },
-  pageKicker: { marginBottom: 3, color: '#FFF', fontSize: 11, fontWeight: '700', letterSpacing: 1, opacity: 0.72 },
-  pageTitle: { color: '#FFF', fontSize: 22, fontWeight: '800', lineHeight: 25 },
-  settings: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderWidth: 0, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.14)' },
-  settingsText: { color: '#FFF', fontSize: 17, lineHeight: 20 },
+  pageHeader: { minHeight: 72, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#EFEAFE' },
+  pageHeaderLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  pageBack: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginRight: 10, borderRadius: 18, backgroundColor: '#E1D9FF' },
+  pageBackText: { color: '#4A4AD5', fontSize: 22, lineHeight: 24, textAlign: 'center' },
+  pageKicker: { marginBottom: 3, color: '#5B52D1', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  pageTitle: { color: '#2F2F43', fontSize: 22, fontWeight: '800', lineHeight: 25 },
+  settings: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderWidth: 0, borderRadius: 18, backgroundColor: '#E1D9FF' },
+  settingsText: { color: '#4A4AD5', fontSize: 17, lineHeight: 20 },
   kicker: {
     color: '#D8D7FF',
     fontSize: 10,
@@ -260,46 +278,51 @@ const styles = StyleSheet.create({
   },
   guestCard: {
     marginHorizontal: 16,
-    marginTop: 28,
-    padding: 24,
-    borderRadius: 12,
+    marginTop: 22,
+    padding: 22,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#E7E8F2',
-    backgroundColor: '#FFF',
+    borderColor: '#E6E8F5',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#4A4AD5',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
-  loginEmblem: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 10, borderRadius: 13, backgroundColor: '#514BD5' },
-  loginEmblemText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  loginEmblem: { width: 52, height: 52, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 12, borderRadius: 16, backgroundColor: '#514BD5' },
+  loginEmblemText: { color: '#FFF', fontSize: 18, fontWeight: '800' },
   guestTitle: {
-    color: '#2D2F3D',
-    fontSize: 18,
+    color: '#1F2235',
+    fontSize: 20,
     fontWeight: '800',
     textAlign: 'center',
   },
   guestCopy: {
     marginTop: 8,
-    color: '#6C7184',
+    color: '#656D85',
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 18,
   },
-  fieldLabel: { marginTop: 16, marginBottom: -9, color: '#525263', fontSize: 11, fontWeight: '700' },
+  fieldLabel: { marginTop: 16, marginBottom: -8, color: '#47506A', fontSize: 11, fontWeight: '800' },
   input: {
     marginTop: 16,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7F5',
-    backgroundColor: '#F9F9FF',
+    borderColor: '#E4E7F3',
+    backgroundColor: '#F8F9FF',
     fontSize: 14,
-    color: '#2D2F3D',
+    color: '#1F2235',
   },
   inputError: { borderColor: '#D65360', backgroundColor: '#FFF7F7' },
   errorText: { marginTop: 4, color: '#C7414F', fontSize: 11, lineHeight: 15 },
   primaryButton: {
     marginTop: 18,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 13,
+    borderRadius: 10,
     backgroundColor: '#514BD5',
     alignItems: 'center',
   },
@@ -309,25 +332,30 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   disabledButton: { opacity: 0.55 },
-  terms: { marginTop: 12, color: '#858596', fontSize: 10, lineHeight: 15, textAlign: 'center' },
+  terms: { marginTop: 12, color: '#7A8195', fontSize: 10, lineHeight: 15, textAlign: 'center' },
   identity: {
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 16,
     marginTop: 18,
-    marginBottom: 22,
+    marginBottom: 18,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E7E8F2',
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#8A43D8',
   },
   avatarText: {
     color: '#FFF',
-    fontSize: 19,
+    fontSize: 20,
     fontWeight: '800',
   },
   identityText: {
@@ -335,32 +363,33 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   name: {
-    color: '#2D2F3D',
-    fontSize: 17,
+    color: '#1F2235',
+    fontSize: 18,
     fontWeight: '800',
-    lineHeight: 21,
+    lineHeight: 22,
   },
   phone: {
     marginTop: 2,
-    color: '#5D6279',
-    fontSize: 11,
-    fontWeight: '500',
+    color: '#5F6881',
+    fontSize: 12,
+    fontWeight: '600',
   },
   location: {
     marginTop: 4,
-    color: '#7A7A86',
+    color: '#6F778A',
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   section: {
     marginHorizontal: 16,
     marginBottom: 20,
   },
   sectionTitle: {
-    color: '#2D2F3D',
-    fontSize: 13,
+    color: '#1F2235',
+    fontSize: 17,
     fontWeight: '800',
     marginBottom: 10,
+    marginTop: 6,
   },
   metricsGrid: {
     flexDirection: 'row',
@@ -385,38 +414,38 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     marginTop: 4,
-    color: '#5E6279',
+    color: '#636D82',
     fontSize: 11,
     fontWeight: '700',
   },
   list: {
     overflow: 'hidden',
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E7E8F2',
+    borderColor: '#E3E5F1',
     backgroundColor: '#FFF',
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 46,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    minHeight: 54,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F5',
   },
   rowIcon: {
-    width: 18,
+    width: 24,
     marginRight: 12,
     color: '#5A53D7',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
     textAlign: 'center',
   },
   rowText: {
     flex: 1,
-    color: '#2F2F3C',
-    fontSize: 12,
+    color: '#1F2235',
+    fontSize: 16,
     fontWeight: '700',
   },
   rowCount: {

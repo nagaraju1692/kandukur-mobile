@@ -45,7 +45,7 @@ export default function MobileHeader({ navigation }: { navigation: any }) {
         </View>
         <Pressable style={styles.profileButton} onPress={() => navigation.navigate('Profile')}>
           <Text style={styles.profileText}>👤</Text>
-          {!isCompact && <Text style={styles.profileName}>{user?.name?.split(' ')[0] || t('Login', 'లాగిన్')}</Text>}
+          <Text style={styles.profileName} numberOfLines={1}>{user?.name?.split(' ')[0] || t('Login', 'లాగిన్')}</Text>
         </Pressable>
         <Pressable
           style={styles.notificationButton}
@@ -113,23 +113,23 @@ const styles = StyleSheet.create({
   header: { position: 'relative', zIndex: 10, minHeight: 62, paddingBottom: 8, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: '#B088C8' },
   brandBlock: { flex: 1, minWidth: 105, flexDirection: 'row', alignItems: 'center', marginRight: 4 },
   mark: { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginRight: 7, backgroundColor: 'rgba(255,255,255,0.20)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)' },
-  markText: { color: '#FFF', fontSize: 17, fontWeight: '800' },
+  markText: { color: '#FFF', fontSize: 18, fontWeight: '800' },
   brandCopy: { flexShrink: 1, minWidth: 0 },
-  brand: { flexShrink: 1, maxWidth: 104, color: '#FFF', fontSize: 16, lineHeight: 18, fontWeight: '800' },
+  brand: { flexShrink: 1, maxWidth: 104, color: '#FFF', fontSize: 17, lineHeight: 20, fontWeight: '800' },
   agriStrip: { flexDirection: 'row', marginTop: 4 },
   agriItem: { width: 18, height: 18, borderRadius: 9, overflow: 'hidden', textAlign: 'center', fontSize: 10, lineHeight: 18, marginRight: 4, backgroundColor: 'rgba(255,255,255,0.18)' },
   actions: { flexShrink: 0, flexDirection: 'row', alignItems: 'center' },
   agriImage: { width: 30, height: 30, borderRadius: 10, marginRight: 6 },
-  languageToggle: { flexDirection: 'row', padding: 1, marginRight: 6, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.16)' },
-  language: { paddingHorizontal: 6, paddingVertical: 5, borderRadius: 11 },
+  languageToggle: { flexDirection: 'row', padding: 2, marginRight: 6, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.16)' },
+  language: { paddingHorizontal: 8, paddingVertical: 7, borderRadius: 13 },
   activeLanguage: { backgroundColor: '#F7EFE9' },
-  languageText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
+  languageText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
   activeLanguageText: { color: '#9A5545' },
-  profileButton: { maxWidth: 72, minWidth: 60, height: 30, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5, marginRight: 6, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.18)' },
-  profileText: { color: '#FFF', fontSize: 14, marginRight: 3 },
-  profileName: { maxWidth: 46, color: '#FFF', fontSize: 8, fontWeight: '800' },
-  notificationButton: { position: 'relative', width: 30, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', backgroundColor: 'rgba(95,63,53,0.22)' },
-  bell: { color: '#FFF', fontSize: 19 },
+  profileButton: { maxWidth: 90, minWidth: 70, height: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, marginRight: 6, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.18)' },
+  profileText: { color: '#FFF', fontSize: 16, marginRight: 4 },
+  profileName: { maxWidth: 58, color: '#FFF', fontSize: 12, fontWeight: '800' },
+  notificationButton: { position: 'relative', width: 34, height: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 17, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', backgroundColor: 'rgba(95,63,53,0.22)' },
+  bell: { color: '#FFF', fontSize: 20 },
   notificationDot: { position: 'absolute', top: 5, right: 5, width: 7, height: 7, borderRadius: 4, backgroundColor: '#FF4F5E', borderWidth: 1, borderColor: '#FFF' },
   notificationBackdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16, backgroundColor: 'rgba(25, 24, 25, 0.58)' },
   notificationPanel: { width: '100%', maxWidth: 440, maxHeight: '82%', padding: 16, borderRadius: 22, backgroundColor: '#FFFDFB' },
