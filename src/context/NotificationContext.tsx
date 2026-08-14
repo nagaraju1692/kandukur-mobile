@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { announcements } from '../data/announcements'
 import { fetchGoldRate, fetchWeather } from '../services/api'
+import { useDirectory } from './DirectoryContext'
 
 export type MobileNotification = {
   id: string
@@ -21,6 +21,7 @@ const dismissedKey = 'mana-kandukur-mobile-dismissed-notifications'
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<MobileNotification[]>([])
   const [dismissed, setDismissed] = useState<string[]>([])
+  const { announcements } = useDirectory()
 
   useEffect(() => {
     let active = true
@@ -45,14 +46,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       setNotifications(announcements.map((announcement) => ({
         id: `announcement-${announcement.id}`,
         title: announcement.type === 'movie' ? 'New movie update' : 'New shop opening',
-        message: `${announcement.title} · ${announcement.date}.`,
+        message: `${announcement.title} · ${announcement.detail}.`,
         time: 'New',
       })))
     } else {
       setNotifications(announcements.filter((announcement) => !dismissed.includes(`announcement-${announcement.id}`)).map((announcement) => ({
         id: `announcement-${announcement.id}`,
         title: announcement.type === 'movie' ? 'New movie update' : 'New shop opening',
-        message: `${announcement.title} · ${announcement.date}.`,
+        message: `${announcement.title} · ${announcement.detail}.`,
         time: 'New',
       })))
     }

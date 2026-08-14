@@ -28,7 +28,7 @@ export default function SubmitBusiness({ navigation }: any) {
 
   const submit = async () => {
     if (!validate()) return
-    await addListing({ ...form, categoryId: `submitted-${form.categoryName.toLowerCase().replace(/\s+/g, '-')}`, submittedBy: user?.name || 'Guest user' })
+    await addListing({ ...form, categoryId: `submitted-${form.categoryName.toLowerCase().replace(/\s+/g, '-')}`, submittedBy: user?.name || 'Guest user', createdBy: user?.phone || '' })
     setSubmitted(true)
   }
 

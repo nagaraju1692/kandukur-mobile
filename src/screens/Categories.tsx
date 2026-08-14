@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { categories, businesses } from '../data/localData'
 import BottomNav from './BottomNav'
 import getCategoryImage from '../utils/categoryImages'
 import MobileHeader from './MobileHeader'
 import { useLanguage } from '../context/LanguageContext'
+import { useDirectory } from '../context/DirectoryContext'
 
 const icons: Record<string, string> = {
   Education: '🎓', Hospitals: '✚', 'Medical shops': '✦', Restaurants: '⌂',
@@ -41,6 +41,7 @@ function CategoryThumbnail({ name }: { name: string }) {
 
 export default function Categories({ navigation }: any) {
   const { t, category: categoryLabel } = useLanguage()
+  const { categories, businesses } = useDirectory()
   const rootCategories = categories
     .filter(category => !category.parentId)
     .sort((first, second) => categoryPriority.indexOf(first.name) - categoryPriority.indexOf(second.name))

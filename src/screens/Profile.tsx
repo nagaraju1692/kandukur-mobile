@@ -10,6 +10,8 @@ export default function Profile({ navigation }: any) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [loginErrors, setLoginErrors] = useState<{ name?: string; phone?: string }>({});
+  const [loginError, setLoginError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const activityRows = useMemo(() => [
     { id: 'reviews', icon: '★', label: t('My reviews', 'నా సమీక్షలు'), count: '0' },
@@ -22,14 +24,24 @@ export default function Profile({ navigation }: any) {
     const trimmedPhone = phone.trim();
 
     const nextErrors: { name?: string; phone?: string } = {};
-    if (!/^[A-Za-z][A-Za-z .'-]{1,49}$/.test(trimmedName)) nextErrors.name = t('Enter your name.', 'మీ పేరు నమోదు చేయండి.');
     if (!/^[6-9]\d{9}$/.test(trimmedPhone.replace(/\D/g, ''))) nextErrors.phone = t('Enter a valid 10-digit mobile number.', 'చెల్లుబాటు అయ్యే 10 అంకెల మొబైల్ నంబర్ నమోదు చేయండి.');
     setLoginErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
-    await login({ name: trimmedName, phone: trimmedPhone });
-    setName('');
-    setPhone('');
+    setIsSubmitting(true);
+    setLoginError('');
+    try {
+      await login({ name: trimmedName, phone: trimmedPhone.replace(/\D/g, '') });
+      setName('');
+      setPhone('');
+    } catch (error) {
+      const message = error instanceof Error && error.message.includes('400')
+        ? t('Enter your name to create a new profile.', 'కొత్త ప్రొఫైల్ సృష్టించడానికి మీ పేరు నమోదు చేయండి.')
+        : t('Unable to sign in. Check your connection and try again.', 'సైన్ ఇన్ చేయడం సాధ్యపడలేదు. కనెక్షన్‌ని తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.')
+      setLoginError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -49,12 +61,12 @@ export default function Profile({ navigation }: any) {
           <Text style={styles.guestTitle}>Mana Kandukur</Text>
           <Text style={styles.guestCopy}>{t('Discover everything local', 'స్థానిక సమాచారం అంతా తెలుసుకోండి')}</Text>
 
-          <Text style={styles.fieldLabel}>{t('Your name', 'మీ పేరు')} *</Text>
+          <Text style={styles.fieldLabel}>{t('Your name (new users only)', 'మీ పేరు (కొత్త వినియోగదారులకు మాత్రమే)')}</Text>
           <TextInput
             style={[styles.input, loginErrors.name && styles.inputError]}
             placeholder={t('Your name', 'మీ పేరు')}
             value={name}
-            onChangeText={(value) => { setName(value); if (loginErrors.name) setLoginErrors((current) => ({ ...current, name: undefined })); }}
+            onChangeText={(value) => { setName(value); setLoginError(''); }}
             autoCapitalize="words"
           />
           {loginErrors.name && <Text style={styles.errorText}>{loginErrors.name}</Text>}
@@ -67,9 +79,10 @@ export default function Profile({ navigation }: any) {
             keyboardType="phone-pad"
           />
           {loginErrors.phone && <Text style={styles.errorText}>{loginErrors.phone}</Text>}
+          {loginError && <Text style={styles.errorText}>{loginError}</Text>}
 
-          <Pressable style={styles.primaryButton} onPress={handleLogin}>
-            <Text style={styles.primaryButtonText}>{t('Continue', 'కొనసాగించండి')}</Text>
+          <Pressable style={[styles.primaryButton, isSubmitting && styles.disabledButton]} disabled={isSubmitting} onPress={handleLogin}>
+            <Text style={styles.primaryButtonText}>{isSubmitting ? t('Signing in...', 'సైన్ ఇన్ అవుతోంది...') : t('Continue', 'కొనసాగించండి')}</Text>
           </Pressable>
           <Text style={styles.terms}>{t('By continuing, you agree to our Terms & Privacy Policy.', 'కొనసాగించడం ద్వారా నిబంధనలు మరియు గోప్యతా విధానాన్ని అంగీకరిస్తున్నారు.')}</Text>
         </View>
@@ -216,6 +229,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
   },
+  disabledButton: { opacity: 0.55 },
   terms: { marginTop: 12, color: '#858596', fontSize: 10, lineHeight: 15, textAlign: 'center' },
   identity: {
     flexDirection: 'row',

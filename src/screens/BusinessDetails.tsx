@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { Alert, Image, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native'
-import { businesses } from '../data/localData'
 import { useAuth } from '../context/AuthContext'
 import { getBusinessImage } from '../utils/categoryImages'
 import BottomNav from './BottomNav'
@@ -8,28 +7,31 @@ import MobileHeader from './MobileHeader'
 import { useLanguage } from '../context/LanguageContext'
 import { useReviews } from '../context/ReviewContext'
 import { useNearby } from '../context/NearbyContext'
+import { useDirectory } from '../context/DirectoryContext'
+import { buildGoogleMapsDirectionsUrl } from '../services/api'
 
 export default function BusinessDetails({ route, navigation }: any) {
   const { id } = route.params || {}
+  const { businesses } = useDirectory()
   const business = businesses.find(item => item.id === id)
   const { favorites, toggleFavorite, isLoggedIn } = useAuth()
   const { t, category: categoryLabel } = useLanguage()
   const { getReviewStats, getReviews, submitReview } = useReviews()
-  const { distances, ready, ensureAddresses } = useNearby()
+  const { distances, ready, ensureAddresses, location } = useNearby()
   const [showReviewForm, setShowReviewForm] = useState(false)
   const [selectedRating, setSelectedRating] = useState(0)
   const [comment, setComment] = useState('')
 
   if (!business) return <View style={styles.empty}><Text>Listing not found.</Text></View>
 
-  const openMap = () => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.address)}`)
+  const openMap = () => Linking.openURL(buildGoogleMapsDirectionsUrl({ latitude: business.latitude, longitude: business.longitude }, location ?? undefined))
   const share = () => Share.share({ title: business.name, message: `${business.name} - ${business.address}` })
   const openWebsite = () => business.website && business.website !== 'N/A' ? Linking.openURL(business.website) : Alert.alert(t('Website unavailable', 'వెబ్‌సైట్ అందుబాటులో లేదు'), t('This listing does not have a website.', 'ఈ లిస్టింగ్‌కు వెబ్‌సైట్ లేదు.'))
   const call = () => business.phone && business.phone !== 'N/A' ? Linking.openURL(`tel:${business.phone.replace(/\s/g, '')}`) : Alert.alert(t('Phone unavailable', 'ఫోన్ అందుబాటులో లేదు'), t('This listing does not have a verified phone number.', 'ఈ లిస్టింగ్‌కు ధృవీకరించిన ఫోన్ నంబర్ లేదు.'))
 
   const isFavorite = favorites.includes(business.id)
   const reviewStats = getReviewStats(business.id)
-  React.useEffect(() => { if (ready) ensureAddresses([business.address]) }, [business.address, ready])
+  React.useEffect(() => { if (ready) ensureAddresses([{ id: business.id, address: business.address, latitude: business.latitude, longitude: business.longitude }]) }, [business.id, business.address, business.latitude, business.longitude, ready])
   const businessReviews = getReviews(business.id)
   const imageSource = getBusinessImage(business.image, business.categoryName)
 
@@ -47,14 +49,14 @@ export default function BusinessDetails({ route, navigation }: any) {
           <Text style={styles.category}>{categoryLabel(business.categoryName)}</Text>
           <Text style={styles.title}>{business.name}</Text>
           <Text style={styles.ratingSummary}>{reviewStats.rating.toFixed(1)} ({reviewStats.count} reviews)</Text>
-          <Text style={styles.distance}>{distances[business.address] !== undefined ? `${distances[business.address].toFixed(1)} km from your location` : 'Calculating distance…'}</Text>
+          <Text style={styles.distance}>{(distances[business.id] ?? distances[business.address]) !== undefined ? `${((distances[business.id] ?? distances[business.address]) as number).toFixed(1)} km from your location` : 'Calculating distance…'}</Text>
           <Text style={styles.description}>{business.description}</Text>
           <View style={styles.actions}><Pressable style={styles.secondary} onPress={call}><Text style={styles.actionIcon}>📞</Text><Text style={styles.secondaryText}>{t('Call', 'కాల్')}</Text></Pressable><Pressable style={styles.primary} onPress={openMap}><Text style={styles.actionIcon}>📍</Text><Text style={styles.primaryText}>{t('Directions', 'దిశలు')}</Text></Pressable><Pressable style={styles.secondary} onPress={share}><Text style={styles.actionIcon}>🔗</Text><Text style={styles.secondaryText}>{t('Share', 'షేర్')}</Text></Pressable><Pressable style={styles.secondary} onPress={() => isLoggedIn ? toggleFavorite(business.id) : navigation.navigate('Profile')}><Text style={styles.actionIcon}>{isFavorite ? '♥' : '♡'}</Text><Text style={styles.secondaryText}>{isFavorite ? t('Saved', 'సేవ్ చేశారు') : t('Save', 'సేవ్')}</Text></Pressable></View>
           <View style={styles.info}><Text style={styles.infoLabel}>{t('ABOUT THIS PLACE', 'ఈ ప్రదేశం గురించి')}</Text><Text style={styles.infoText}>{business.description || t('Discover everything this business has to offer.', 'ఈ వ్యాపారం అందించే సేవలను తెలుసుకోండి.')}</Text><Text style={styles.infoLabel}>{t('CONTACT INFORMATION', 'సంప్రదింపు సమాచారం')}</Text><Text style={styles.infoText}>📞 {business.phone || t('Not available', 'అందుబాటులో లేదు')}</Text><Text style={styles.infoText}>📍 {business.address}</Text>{business.website && <Pressable onPress={openWebsite}><Text style={styles.websiteLink}>🌐 {business.website}</Text></Pressable>}</View>
           <View style={styles.sectionCard}><Text style={styles.infoLabel}>{t('POPULAR SERVICES', 'ప్రసిద్ధ సేవలు')}</Text><View style={styles.serviceRow}>{['General Services', 'Consultation', 'Support', 'Premium', 'Extended Hours'].map((service) => <Text key={service} style={styles.serviceTag}>{t(service, service)}</Text>)}</View></View>
           <View style={styles.sectionCard}><Text style={styles.infoLabel}>{t('HOURS', 'పని వేళలు')}</Text><Text style={styles.infoText}>Monday - Friday: 9:00 AM - 6:00 PM</Text><Text style={styles.infoText}>Saturday: 9:00 AM - 2:00 PM</Text><Text style={styles.infoText}>Sunday: Closed</Text></View>
           <View style={styles.sectionCard}><Text style={styles.infoLabel}>{t(`PHOTOS (${(business.gallery || []).length || 4})`, `ఫోటోలు (${(business.gallery || []).length || 4})`)}</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gallery}>{(business.gallery || []).slice(0, 4).map((image: any, index: number) => <Image key={`${business.id}-${index}`} source={getBusinessImage(image, business.categoryName)} style={styles.galleryImage} resizeMode="cover" />)}</ScrollView></View>
-          <Pressable style={styles.reviewButton} onPress={() => setShowReviewForm(true)}><Text style={styles.reviewButtonText}>{t('Write a Review', 'సమీక్ష రాయండి')}</Text></Pressable>
+          <Pressable style={styles.reviewButton} onPress={() => isLoggedIn ? setShowReviewForm(true) : navigation.navigate('Profile')}><Text style={styles.reviewButtonText}>{t('Write a Review', 'సమీక్ష రాయండి')}</Text></Pressable>
           <View style={styles.sectionCard}><Text style={styles.infoLabel}>{t('REVIEWS', 'సమీక్షలు')} ({businessReviews.length})</Text>{businessReviews.length === 0 ? <Text style={styles.noReviews}>{t('No reviews yet.', 'ఇంకా సమీక్షలు లేవు.')}</Text> : businessReviews.slice().reverse().map((review) => <View key={review.id} style={styles.reviewItem}><Text style={styles.reviewRating}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</Text>{review.comment ? <Text style={styles.reviewComment}>{review.comment}</Text> : null}<Text style={styles.reviewDate}>{new Date(review.createdAt).toLocaleDateString()}</Text></View>)}</View>
         </View>
       </ScrollView>

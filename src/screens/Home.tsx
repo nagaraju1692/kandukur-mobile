@@ -4,38 +4,22 @@ import BottomNav from './BottomNav'
 import { getBusinessImage } from '../utils/categoryImages'
 import MobileHeader from './MobileHeader'
 import { fetchGoldRate, fetchWeather, GoldRate, WeatherReport } from '../services/api'
-import { businesses } from '../data/localData'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useReviews } from '../context/ReviewContext'
 import { useNearby } from '../context/NearbyContext'
+import { useDirectory } from '../context/DirectoryContext'
 
-const cards = [
-  { id: '1', name: 'Education' },
-  { id: '2', name: 'Hospitals' },
-  { id: '3', name: 'Medical shops' },
-  { id: '4', name: 'Restaurants' },
-  { id: '21', name: 'Real Estate' },
-  { id: '22', name: 'Agriculture' },
-  { id: '6', name: 'Lodges' },
-  { id: '7', name: 'Bus stand' },
-]
+const homeCategoryIds = ['1', '2', '3', '4', '21', '22', '6', '7']
 
 const categoryIcons: Record<string, string> = {
   Education: '🎓', Hospitals: '🏥', 'Medical shops': '💊', Restaurants: '🍽️', 'Real Estate': '🏘️', Agriculture: '🌾', Lodges: '🛏️', 'Bus stand': '🚌',
 }
 
-const updates = [
-  { title: 'New movie at Raghava Multiplex', detail: 'Opening this Friday · Raghava Multiplex, Kandukur', description: 'Book your seats for the new Telugu movie releasing this Friday at Raghava Multiplex. Show timings and ticket availability will be updated by the theatre.', type: 'Movie', image: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=600&q=80' },
-  { title: 'New show at Yuvraj Theatre', detail: 'Coming soon · Yuvraj Theatre, Kandukur', description: 'A new show is coming soon to Yuvraj Theatre. Check back for show timings and ticket availability.', type: 'Movie', image: 'https://images.unsplash.com/photo-1503095396549-807530d5d4b7?auto=format&fit=crop&w=600&q=80' },
-  { title: 'Fresh Mart opening soon', detail: 'Opening next week · Market Road, Kandukur', description: 'Fresh Mart is opening soon with daily essentials, groceries, and household supplies for families around Kandukur.', type: 'Shop', image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80' },
-  { title: 'New Style Studio opening', detail: 'Opening this month · Pamuru Road, Kandukur', description: 'Style Studio will offer clothing, accessories, and seasonal collections from its new Pamuru Road location in Kandukur.', type: 'Shop', image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=600&q=80' },
-]
-
 const fallbackWeather: WeatherReport = { temp: '31°C', condition: 'Overcast', humidity: '58% humidity', wind: '18 km/h wind', rainSoon: false, rainMinutes: null, updatedAt: '' }
-const fallbackGold: GoldRate = { pricePerSavaram: 106814, updatedAt: '' }
+const fallbackGold: GoldRate = { pricePerGram: 13352, pricePerSavaram: 106814, pricePerGram22K: 12239, pricePerSavaram22K: 97912, updatedAt: '' }
 
-function localPopularBusinesses() {
+function localPopularBusinesses(businesses: any[]) {
   return ['2', '4', '3'].flatMap((categoryId) => businesses
     .filter((business) => business.categoryId === categoryId)
     .sort((first, second) => Number(!first.address.toLowerCase().includes('kandukur')) - Number(!second.address.toLowerCase().includes('kandukur')))
@@ -47,13 +31,31 @@ export default function Home({ navigation }: any) {
   const { getReviewStats } = useReviews()
   const { distances, ready, ensureAddresses, sortNearest } = useNearby()
   const { t, category: categoryLabel } = useLanguage()
+  const { businesses, categories, announcements: updates } = useDirectory()
+  const cards = homeCategoryIds.map((id) => categories.find((category) => category.id === id)).filter((category): category is NonNullable<typeof category> => Boolean(category))
+  const categoryListingCount = (categoryId: string) => {
+    const categoryIds = new Set([categoryId])
+    let hasNewCategory = true
+    while (hasNewCategory) {
+      hasNewCategory = false
+      categories.forEach((category) => {
+        if (category.parentId && categoryIds.has(category.parentId) && !categoryIds.has(category.id)) {
+          categoryIds.add(category.id)
+          hasNewCategory = true
+        }
+      })
+    }
+    return businesses.filter((business) => categoryIds.has(business.categoryId)).length
+  }
   const [search, setSearch] = useState('')
   const [weather, setWeather] = useState<WeatherReport>(fallbackWeather)
   const [gold, setGold] = useState<GoldRate>(fallbackGold)
-  const [popularBusinesses, setPopularBusinesses] = useState<any[]>(localPopularBusinesses)
+  const [popularBusinesses, setPopularBusinesses] = useState<any[]>([])
   const [selectedInfo, setSelectedInfo] = useState<'weather' | 'gold' | null>(null)
   const [selectedUpdate, setSelectedUpdate] = useState<typeof updates[number] | null>(null)
   const announcementRailRef = useRef<ScrollView>(null)
+  const announcementOffsetRef = useRef(0)
+  const announcementContentWidthRef = useRef(0)
   const { width } = useWindowDimensions()
   const isPhone = width < 600
   const horizontalPadding = isPhone ? 18 : 24
@@ -66,7 +68,28 @@ export default function Home({ navigation }: any) {
     fetchGoldRate().then(setGold).catch(() => undefined)
   }, [])
 
-  useEffect(() => { if (ready) ensureAddresses(popularBusinesses.map((business) => business.address)) }, [popularBusinesses.length, ready, ensureAddresses])
+  useEffect(() => {
+    if (selectedInfo !== 'weather') return
+    const refreshWeather = () => fetchWeather().then(setWeather).catch(() => undefined)
+    refreshWeather()
+    const timer = setInterval(refreshWeather, 60000)
+    return () => clearInterval(timer)
+  }, [selectedInfo])
+
+  useEffect(() => { setPopularBusinesses(localPopularBusinesses(businesses)) }, [businesses])
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const rail = announcementRailRef.current
+      if (!rail) return
+      const step = 320
+      const nextX = announcementOffsetRef.current + step >= announcementContentWidthRef.current ? 0 : announcementOffsetRef.current + step
+      rail.scrollTo({ x: nextX, y: 0, animated: true })
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => { if (ready) ensureAddresses(popularBusinesses.map((business) => ({ id: business.id, address: business.address, latitude: business.latitude, longitude: business.longitude }))) }, [popularBusinesses.length, ready, ensureAddresses])
 
   return (
     <View style={styles.screen}>
@@ -99,15 +122,27 @@ export default function Home({ navigation }: any) {
           </Pressable>
           <Pressable style={styles.infoCard} onPress={() => setSelectedInfo('gold')}>
             <Text style={styles.infoLabel}>🥇 🥈 RATES</Text>
-            <Text style={styles.infoValue}>Gold: ₹{gold.pricePerSavaram.toLocaleString('en-IN')} <Text style={styles.infoSmall}>/ savaram</Text></Text>
-            <Text style={styles.infoText}><Text style={styles.silver}>Silver:</Text> ₹98,000 / kg · Kandukur</Text>
+            <Text style={styles.infoValue}>22K: ₹{gold.pricePerSavaram22K.toLocaleString('en-IN')} <Text style={styles.infoSmall}>/ 8g</Text></Text>
+            <Text style={styles.infoValue}>24K: ₹{gold.pricePerSavaram.toLocaleString('en-IN')} <Text style={styles.infoSmall}>/ 8g</Text></Text>
           </Pressable>
         </View>
 
         <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>{t('Latest in Kandukur', 'కందుకూరులో తాజా సమాచారం')}</Text><Text style={styles.updateCount}>{updates.length} {t('updates', 'అప్‌డేట్లు')}</Text></View>
         <View style={styles.announcementWrap}>
           <Pressable style={[styles.announcementArrow, styles.announcementArrowLeft]} onPress={() => announcementRailRef.current?.scrollTo({ x: 0, animated: true })}><Text style={styles.announcementArrowText}>‹</Text></Pressable>
-          <ScrollView ref={announcementRailRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.updateRail}>
+          <ScrollView
+            ref={announcementRailRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.updateRail}
+            onScroll={({ nativeEvent }) => {
+              announcementOffsetRef.current = nativeEvent.contentOffset.x
+            }}
+            onContentSizeChange={(contentWidth) => {
+              announcementContentWidthRef.current = contentWidth
+            }}
+            scrollEventThrottle={16}
+          >
             {updates.map((update) => (
               <Pressable key={update.title} style={styles.updateCard} onPress={() => setSelectedUpdate(update)}>
                 <Image source={{ uri: update.image }} style={styles.updateImage} resizeMode="cover" />
@@ -134,7 +169,7 @@ export default function Home({ navigation }: any) {
                 <Text style={[styles.cardName, isPhone && styles.phoneCardName]}>{categoryLabel(category.name)}</Text>
                 <Text style={styles.arrow}>›</Text>
               </View>
-              <Text style={styles.categoryCount}>{businesses.filter((business) => business.categoryId === category.id || (category.id === '1' && business.categoryId.startsWith('edu-'))).length} {t('Listings', 'లిస్టింగ్‌లు')}</Text>
+              <Text style={styles.categoryCount}>{categoryListingCount(category.id)} {t('Listings', 'లిస్టింగ్‌లు')}</Text>
             </Pressable>
           ))}
         </View>
@@ -158,7 +193,7 @@ export default function Home({ navigation }: any) {
                   <Text style={styles.businessName}>{business.name}</Text>
                   <View style={styles.businessMeta}><Text style={styles.businessCategory}>{categoryLabel(business.categoryName)}</Text><Text style={styles.trending}>{t('Trending', 'ట్రెండింగ్')}</Text></View>
                   <Text style={styles.rating}>⭐ {reviewStats.rating.toFixed(1)} <Text style={styles.reviewCount}>({reviewStats.count} reviews)</Text></Text>
-                  <Text style={styles.businessAddress}>📍 {business.address}</Text><Text style={styles.businessDistance}>{distances[business.address] !== undefined ? `${distances[business.address].toFixed(1)} km away` : 'Finding distance…'}</Text>
+                  <Text style={styles.businessAddress}>📍 {business.address}</Text><Text style={styles.businessDistance}>{(distances[business.id] ?? distances[business.address]) !== undefined ? `${((distances[business.id] ?? distances[business.address]) as number).toFixed(1)} km away` : 'Finding distance…'}</Text>
                 </View>
               </Pressable>
             )
@@ -186,8 +221,11 @@ export default function Home({ navigation }: any) {
               </>
             ) : (
               <>
-                <Text style={styles.modalTitle}>₹{gold.pricePerSavaram.toLocaleString('en-IN')} / savaram</Text>
-                <Text style={styles.modalLine}>Gold rate for Kandukur</Text>
+                <Text style={styles.modalTitle}>22K: ₹{gold.pricePerGram22K.toLocaleString('en-IN')} / gram</Text>
+                <Text style={styles.modalLine}>22K, 8g savaram: ₹{gold.pricePerSavaram22K.toLocaleString('en-IN')}</Text>
+                <Text style={styles.modalLine}>24K: ₹{gold.pricePerGram.toLocaleString('en-IN')} / gram</Text>
+                <Text style={styles.modalLine}>24K, 8g savaram: ₹{gold.pricePerSavaram.toLocaleString('en-IN')}</Text>
+                <Text style={styles.modalLine}>Live spot-gold conversion for Ongole area</Text>
                 <Text style={styles.modalLine}>Updated: {gold.updatedAt ? new Date(gold.updatedAt).toLocaleString() : 'Just now'}</Text>
                 <Text style={styles.modalFooter}>Live market rate</Text>
               </>

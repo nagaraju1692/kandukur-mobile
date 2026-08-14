@@ -1,17 +1,18 @@
 import React from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useAuth } from '../context/AuthContext'
-import { businesses } from '../data/localData'
 import BottomNav from './BottomNav'
 import { useLanguage } from '../context/LanguageContext'
 import { useNearby } from '../context/NearbyContext'
+import { useDirectory } from '../context/DirectoryContext'
 
 export default function Favorites({ navigation }: any) {
   const { favorites, isLoggedIn, user, logout } = useAuth()
   const { t, category: categoryLabel } = useLanguage()
   const { distances, ready, ensureAddresses, sortNearest } = useNearby()
+  const { businesses } = useDirectory()
   const savedBusinesses = businesses.filter((business) => favorites.includes(business.id))
-  React.useEffect(() => { if (ready) ensureAddresses(savedBusinesses.map((business) => business.address)) }, [savedBusinesses.length, ready])
+  React.useEffect(() => { if (ready) ensureAddresses(savedBusinesses.map((business) => ({ id: business.id, address: business.address, latitude: business.latitude, longitude: business.longitude }))) }, [savedBusinesses.length, ready])
 
   return (
     <View style={styles.screen}>
@@ -45,7 +46,7 @@ export default function Favorites({ navigation }: any) {
               <View style={styles.businessBody}>
                 <Text style={styles.businessName}>{business.name}</Text>
                 <Text style={styles.businessCategory}>{categoryLabel(business.categoryName)}</Text>
-                <Text style={styles.businessAddress}>{business.address}</Text><Text style={styles.businessDistance}>{distances[business.address] !== undefined ? `${distances[business.address].toFixed(1)} km away` : 'Finding distance…'}</Text>
+                <Text style={styles.businessAddress}>{business.address}</Text><Text style={styles.businessDistance}>{(distances[business.id] ?? distances[business.address]) !== undefined ? `${((distances[business.id] ?? distances[business.address]) as number).toFixed(1)} km away` : 'Finding distance…'}</Text>
               </View>
               <Text style={styles.arrow}>›</Text>
             </Pressable>

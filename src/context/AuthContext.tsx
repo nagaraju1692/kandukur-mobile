@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fetchJson } from '../services/api';
 
 export type UserProfile = {
   name: string;
@@ -10,7 +11,7 @@ type AuthContextValue = {
   user: UserProfile | null;
   favorites: string[];
   isLoggedIn: boolean;
-  login: (profile: UserProfile) => Promise<void>;
+  login: (profile: UserProfile) => Promise<UserProfile>;
   logout: () => Promise<void>;
   toggleFavorite: (businessId: string) => Promise<void>;
 };
@@ -69,7 +70,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [favorites]);
 
   const login = async (profile: UserProfile) => {
-    setUser(profile);
+    const response = await fetchJson<{ data: UserProfile }>('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profile),
+    });
+    const favoritesResponse = await fetchJson<{ data: string[] }>(`/api/users/${response.data.phone}/favorites`);
+    setUser(response.data);
+    setFavorites(favoritesResponse.data);
+    return response.data;
   };
 
   const logout = async () => {
@@ -78,11 +87,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const toggleFavorite = async (businessId: string) => {
-    setFavorites((current) => (
-      current.includes(businessId)
-        ? current.filter((id) => id !== businessId)
-        : [...current, businessId]
-    ));
+    if (!user) return;
+    const response = await fetchJson<{ data: string[] }>(`/api/users/${user.phone}/favorites/${encodeURIComponent(businessId)}`, { method: 'PUT' });
+    setFavorites(response.data);
   };
 
   const value = useMemo<AuthContextValue>(() => ({

@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import React, { createContext, useContext, useMemo } from 'react'
+import { fetchJson } from '../services/api'
+import { Business, useDirectory } from './DirectoryContext'
+import { useAuth } from './AuthContext'
 
 export type SubmittedListing = {
   id: string
@@ -11,6 +13,7 @@ export type SubmittedListing = {
   description: string
   website: string
   submittedBy: string
+  createdBy: string
   status: 'Pending review' | 'Sold out'
 }
 
@@ -21,33 +24,29 @@ type SubmittedListingsValue = {
 }
 
 const SubmittedListingsContext = createContext<SubmittedListingsValue | undefined>(undefined)
-const storageKey = 'mana-kandukur-mobile-submitted-listings'
 
 export function SubmittedListingsProvider({ children }: { children: React.ReactNode }) {
-  const [listings, setListings] = useState<SubmittedListing[]>([])
-
-  useEffect(() => {
-    AsyncStorage.getItem(storageKey).then((value) => {
-      if (!value) return
-      try {
-        const parsed = JSON.parse(value)
-        if (Array.isArray(parsed)) setListings(parsed)
-      } catch {
-        setListings([])
-      }
-    }).catch(() => undefined)
-  }, [])
-
-  useEffect(() => {
-    AsyncStorage.setItem(storageKey, JSON.stringify(listings)).catch(() => undefined)
-  }, [listings])
+  const { businesses, refreshBusinesses } = useDirectory()
+  const { user } = useAuth()
+  const listings = businesses.filter((business) => business.submittedBy) as SubmittedListing[]
 
   const addListing = async (listing: Omit<SubmittedListing, 'id' | 'status'>) => {
-    setListings((current) => [...current, { ...listing, id: `submitted-${Date.now()}`, status: 'Pending review' }])
+    const document: SubmittedListing = { ...listing, id: `submitted-${Date.now()}`, status: 'Pending review' }
+    await fetchJson<{ data: Business }>('/api/businesses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(document),
+    })
+    await refreshBusinesses()
   }
 
   const markSoldOut = async (listingId: string) => {
-    setListings((current) => current.map((listing) => listing.id === listingId ? { ...listing, status: 'Sold out' as const } : listing))
+    await fetchJson<{ data: Business }>(`/api/businesses/${encodeURIComponent(listingId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'Sold out', updatedBy: user?.phone ?? null }),
+    })
+    await refreshBusinesses()
   }
 
   const value = useMemo(() => ({ listings, addListing, markSoldOut }), [listings])

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Image } from 'react-native'
-import { businesses, categories } from '../data/localData'
+import { buildGoogleMapsDirectionsUrl } from '../services/api'
 import BottomNav from './BottomNav'
 import MobileHeader from './MobileHeader'
 import { useLanguage } from '../context/LanguageContext'
@@ -9,6 +9,7 @@ import { getBusinessImage } from '../utils/categoryImages'
 import { useReviews } from '../context/ReviewContext'
 import { useNearby } from '../context/NearbyContext'
 import { useSubmittedListings } from '../context/SubmittedListingsContext'
+import { useDirectory } from '../context/DirectoryContext'
 
 const subcategoryIcons: Record<string, string> = {
   'Plots for Sale': '📐', 'Property Agents': '🤝', 'Tobacco Boards': '🌿', 'Vegetable Markets': '🥕',
@@ -24,19 +25,20 @@ export default function Businesses({ navigation, route }: any) {
   const { t, category: categoryLabel } = useLanguage()
   const { favorites, toggleFavorite, isLoggedIn, user } = useAuth()
   const { getReviewStats } = useReviews()
-  const { distances, ready, ensureAddresses, sortNearest } = useNearby()
-  const { listings: submittedListings, markSoldOut } = useSubmittedListings()
+  const { distances, ready, ensureAddresses, sortNearest, location } = useNearby()
+  const { markSoldOut } = useSubmittedListings()
+  const { businesses, categories } = useDirectory()
   const [showPropertyForm, setShowPropertyForm] = useState(false)
   const [propertyForm, setPropertyForm] = useState({ name: '', phone: '', type: 'Direct owner', gadhulu: '', face: '', location: '' })
   const categoryId = route.params?.categoryId || null
   const category = categories.find(item => item.id === categoryId)
   const subcategoryIds = categoryId ? categories.filter(item => item.parentId === categoryId).map(item => item.id) : []
-  const allBusinesses: any[] = [...businesses, ...submittedListings]
+  const allBusinesses: any[] = businesses
   const selectedBusinesses: any[] = allBusinesses.filter(
     business => !categoryId || business.categoryId === categoryId || subcategoryIds.includes(business.categoryId),
   )
   const orderedBusinesses = sortNearest(selectedBusinesses)
-  React.useEffect(() => { if (ready) ensureAddresses(selectedBusinesses.map((business) => business.address)) }, [selectedBusinesses.length, categoryId, ready])
+  React.useEffect(() => { if (ready) ensureAddresses(selectedBusinesses.map((business) => ({ id: business.id, address: business.address, latitude: business.latitude, longitude: business.longitude }))) }, [selectedBusinesses.length, categoryId, ready])
 
   const childCategories = categories.filter(item => item.parentId === categoryId)
   if (childCategories.length > 0) {
@@ -100,10 +102,10 @@ export default function Businesses({ navigation, route }: any) {
               <Text style={styles.cardPhone}>{business.phone || 'N/A'}</Text>
               <Text style={[styles.openStatus, business.status === 'Sold out' && styles.soldOutStatus]}>{business.status === 'Sold out' ? t('Sold out', 'అమ్ముడైంది') : business.status === 'Pending review' ? t('Pending review', 'సమీక్షలో ఉంది') : t('Open · Closes 10 pm', 'తెరిచి ఉంది · రాత్రి 10కి మూసివేస్తుంది')}</Text>
               <Text style={styles.cardAddress}>{business.address}</Text>
-              <Text style={styles.cardDistance}>{distances[business.address] !== undefined ? `📍 ${distances[business.address].toFixed(1)} km away` : '📍 Finding distance…'}</Text>
+              <Text style={styles.cardDistance}>{(distances[business.id] ?? distances[business.address]) !== undefined ? `📍 ${((distances[business.id] ?? distances[business.address]) as number).toFixed(1)} km away` : '📍 Finding distance…'}</Text>
               <Text style={styles.cardDescription} numberOfLines={3}>{business.description}</Text>
             </View></View>
-            <View style={styles.cardActions}><Pressable style={styles.directionButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.address)}`)}><Text style={styles.directionText}>{t('Directions', 'దిశలు')}</Text></Pressable><Pressable style={styles.websiteButton} onPress={() => business.website && business.website !== 'N/A' ? Linking.openURL(business.website) : Alert.alert(t('Website unavailable', 'వెబ్‌సైట్ అందుబాటులో లేదు'), t('This listing does not have a website.', 'ఈ లిస్టింగ్‌కు వెబ్‌సైట్ లేదు.'))}><Text style={styles.websiteText}>{t('Website', 'వెబ్‌సైట్')}</Text></Pressable>{business.submittedBy === user?.name && business.status !== 'Sold out' && <Pressable style={styles.soldOutButton} onPress={() => markSoldOut(business.id)}><Text style={styles.soldOutText}>{t('Mark sold out', 'అమ్ముడైనట్లు గుర్తించండి')}</Text></Pressable>}</View>
+            <View style={styles.cardActions}><Pressable style={styles.directionButton} onPress={() => Linking.openURL(buildGoogleMapsDirectionsUrl({ latitude: business.latitude, longitude: business.longitude }, location ?? undefined))}><Text style={styles.directionText}>{t('Directions', 'దిశలు')}</Text></Pressable><Pressable style={styles.websiteButton} onPress={() => business.website && business.website !== 'N/A' ? Linking.openURL(business.website) : Alert.alert(t('Website unavailable', 'వెబ్‌సైట్ అందుబాటులో లేదు'), t('This listing does not have a website.', 'ఈ లిస్టింగ్‌కు వెబ్‌సైట్ లేదు.'))}><Text style={styles.websiteText}>{t('Website', 'వెబ్‌సైట్')}</Text></Pressable>{business.submittedBy === user?.name && business.status !== 'Sold out' && <Pressable style={styles.soldOutButton} onPress={() => markSoldOut(business.id)}><Text style={styles.soldOutText}>{t('Mark sold out', 'అమ్ముడైనట్లు గుర్తించండి')}</Text></Pressable>}</View>
           </Pressable>
         ))}
 

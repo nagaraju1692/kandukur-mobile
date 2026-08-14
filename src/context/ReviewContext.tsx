@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { fetchJson } from '../services/api'
+import { useAuth } from './AuthContext'
 
 type Review = {
   id: string
   businessId: string
+  userPhone: string
   rating: number
   comment: string
   createdAt: string
@@ -16,26 +18,20 @@ type ReviewContextValue = {
 }
 
 const ReviewContext = createContext<ReviewContextValue | undefined>(undefined)
-const storageKey = 'mana-kandukur-mobile-reviews'
 
 export function ReviewProvider({ children }: { children: React.ReactNode }) {
   const [reviews, setReviews] = useState<Review[]>([])
+  const { user } = useAuth()
 
   useEffect(() => {
-    AsyncStorage.getItem(storageKey).then((value) => {
-      if (!value) return
-      try {
-        const parsed = JSON.parse(value)
-        if (Array.isArray(parsed)) setReviews(parsed)
-      } catch {
-        setReviews([])
-      }
-    }).catch(() => undefined)
+    let active = true
+    fetchJson<{ data: Review[] }>('/api/reviews').then((response) => {
+      if (active) setReviews(response.data)
+    }).catch(() => {
+      if (active) setReviews([])
+    })
+    return () => { active = false }
   }, [])
-
-  useEffect(() => {
-    AsyncStorage.setItem(storageKey, JSON.stringify(reviews)).catch(() => undefined)
-  }, [reviews])
 
   const getReviewStats = (businessId: string) => {
     const businessReviews = reviews.filter((review) => review.businessId === businessId)
@@ -47,13 +43,13 @@ export function ReviewProvider({ children }: { children: React.ReactNode }) {
   const getReviews = (businessId: string) => reviews.filter((review) => review.businessId === businessId)
 
   const submitReview = async (businessId: string, rating: number, comment: string) => {
-    setReviews((current) => [...current, {
-      id: `${businessId}-${Date.now()}`,
-      businessId,
-      rating,
-      comment: comment.trim(),
-      createdAt: new Date().toISOString(),
-    }])
+    if (!user) throw new Error('Sign in before submitting a review')
+    const response = await fetchJson<{ data: Review }>(`/api/businesses/${encodeURIComponent(businessId)}/reviews`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userPhone: user.phone, rating, comment }),
+    })
+    setReviews((current) => [...current, response.data])
   }
 
   const value = useMemo(() => ({ getReviewStats, getReviews, submitReview }), [reviews])

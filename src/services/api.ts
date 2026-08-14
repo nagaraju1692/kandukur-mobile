@@ -1,5 +1,3 @@
-import { businesses, categories } from '../data/localData'
-
 export type WeatherReport = {
   temp: string
   condition: string
@@ -11,7 +9,10 @@ export type WeatherReport = {
 }
 
 export type GoldRate = {
+  pricePerGram: number
   pricePerSavaram: number
+  pricePerGram22K: number
+  pricePerSavaram22K: number
   updatedAt: string
 }
 
@@ -54,53 +55,77 @@ export async function fetchGoldRate(): Promise<GoldRate> {
   const response = await fetch('https://api.gold-api.com/price/XAU/INR')
   if (!response.ok) throw new Error(`Gold rate request failed: ${response.status}`)
   const data = await response.json()
+  const pricePerGram = Math.round(data.price / 31.1034768)
+  const pricePerGram22K = Math.round(pricePerGram * 22 / 24)
   return {
-    pricePerSavaram: Math.round((data.price / 31.1034768) * 8),
+    pricePerGram,
+    pricePerSavaram: pricePerGram * 8,
+    pricePerGram22K,
+    pricePerSavaram22K: pricePerGram22K * 8,
     updatedAt: data.updatedAt,
   }
 }
 
-export async function geocodeAddress(address: string): Promise<{ latitude: number; longitude: number } | null> {
-  const params = new URLSearchParams({ format: 'jsonv2', limit: '1', q: `${address}, Andhra Pradesh, India` })
-  const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-    headers: { Accept: 'application/json' },
-  })
-  if (!response.ok) return null
-  const results = await response.json()
-  if (!Array.isArray(results) || !results[0]) return null
-  return { latitude: Number(results[0].lat), longitude: Number(results[0].lon) }
+function fallbackCoordinatesByAddress(address: string): { latitude: number; longitude: number } | null {
+  const normalized = address.toLowerCase()
+
+  if (normalized.includes('trr government degree college') || normalized.includes('trr degree')) {
+    return { latitude: 15.2084, longitude: 79.8982 }
+  }
+
+  if (normalized.includes('gayatri degree college') || normalized.includes('gayatri')) {
+    return { latitude: 15.2278, longitude: 79.9186 }
+  }
+
+  return null
 }
 
-export async function fetchJson(path: string) {
-  const url = new URL(path, 'http://localhost')
-  const pathname = url.pathname
+export async function geocodeAddress(address: string): Promise<{ latitude: number; longitude: number } | null> {
+  const fallback = fallbackCoordinatesByAddress(address)
+  if (!address || !address.trim()) return null
 
-  if (pathname === '/api/categories') {
-    return { data: categories }
+  try {
+    const params = new URLSearchParams({ format: 'jsonv2', limit: '1', q: `${address}, Andhra Pradesh, India` })
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+      headers: { Accept: 'application/json', 'User-Agent': 'ManaKandukurApp/1.0' },
+    })
+    if (!response.ok) return fallback
+    const results = await response.json()
+    if (!Array.isArray(results) || !results[0]) return fallback
+    return { latitude: Number(results[0].lat), longitude: Number(results[0].lon) }
+  } catch {
+    return fallback
+  }
+}
+
+export function buildGoogleMapsDirectionsUrl(
+  destination: { latitude: number | null | undefined; longitude: number | null | undefined },
+  origin?: { latitude: number; longitude: number } | null,
+  travelMode: 'driving' | 'walking' | 'transit' | 'bicycling' = 'driving',
+) {
+  const destinationLatitude = Number(destination.latitude)
+  const destinationLongitude = Number(destination.longitude)
+  if (!Number.isFinite(destinationLatitude) || !Number.isFinite(destinationLongitude)) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('Kandukur Andhra Pradesh')}`
   }
 
-  if (pathname === '/api/businesses') {
-    const categoryId = url.searchParams.get('categoryId')
-    const filtered = categoryId
-      ? (() => {
-          const category = categories.find(c => c.id === categoryId)
-          if (category?.name === 'Education') {
-            const educationIds = categories.filter(c => c.parentId === categoryId).map(c => c.id)
-            return businesses.filter(b => b.categoryId === categoryId || educationIds.includes(b.categoryId))
-          }
-          return businesses.filter(b => b.categoryId === categoryId)
-        })()
-      : businesses
-    return { data: filtered }
-  }
+  const originQuery = origin ? `${origin.latitude},${origin.longitude}` : ''
+  const params = new URLSearchParams({ api: '1', destination: `${destinationLatitude},${destinationLongitude}`, travelmode: travelMode })
+  if (originQuery) params.set('origin', originQuery)
+  return `https://www.google.com/maps/dir/?${params.toString()}`
+}
 
-  if (pathname.startsWith('/api/businesses/')) {
-    const id = pathname.replace('/api/businesses/', '')
-    const business = businesses.find(b => b.id === id) || null
-    return { data: business }
-  }
+const apiBaseUrl = process.env.EXPO_PUBLIC_API_URL
 
-  return { data: null }
+if (!apiBaseUrl) {
+  console.warn('EXPO_PUBLIC_API_URL is not configured. Directory data cannot be loaded.')
+}
+
+export async function fetchJson<T>(path: string, options?: RequestInit): Promise<T> {
+  if (!apiBaseUrl) throw new Error('EXPO_PUBLIC_API_URL is not configured')
+  const response = await fetch(`${apiBaseUrl.replace(/\/$/, '')}${path}`, options)
+  if (!response.ok) throw new Error(`API request failed: ${response.status}`)
+  return response.json() as Promise<T>
 }
 
 export default fetchJson

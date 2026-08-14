@@ -23,6 +23,7 @@ import { NearbyProvider } from './src/context/NearbyContext';
 import { SubmittedListingsProvider } from './src/context/SubmittedListingsContext';
 import SubmitBusiness from './src/screens/SubmitBusiness';
 import Feedback from './src/screens/Feedback';
+import { DirectoryProvider } from './src/context/DirectoryContext';
 
 enableScreens();
 
@@ -33,11 +34,12 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
-        <LanguageProvider>
-          <NotificationProvider>
+        <DirectoryProvider>
+          <LanguageProvider>
+            <NotificationProvider>
             <ReviewProvider>
                 <NearbyProvider>
-                  <SubmittedListingsProvider>
+                    <SubmittedListingsProvider>
                     <NavigationContainer>
               <StatusBar style="light" />
               <Stack.Navigator initialRouteName="Home" screenOptions={{ headerShown: false }}>
@@ -52,11 +54,12 @@ export default function App() {
                 <Stack.Screen name="Feedback" component={Feedback} />
               </Stack.Navigator>
                     </NavigationContainer>
-                  </SubmittedListingsProvider>
+                    </SubmittedListingsProvider>
                 </NearbyProvider>
             </ReviewProvider>
-          </NotificationProvider>
-        </LanguageProvider>
+            </NotificationProvider>
+          </LanguageProvider>
+        </DirectoryProvider>
         </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

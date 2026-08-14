@@ -10,6 +10,14 @@ npm install
 npx expo start
 ```
 
+Backend configuration
+
+1. Copy `backend/.env.example` to `backend/.env` and set your PostgreSQL `DATABASE_URL`.
+2. Run `npm install` and `npm run dev` from `backend`.
+3. Copy `.env.example` to `.env` in this folder and set `EXPO_PUBLIC_API_URL` to the backend's reachable URL. For a physical device, use the computer's LAN IP instead of `localhost`.
+
+The mobile app loads categories, businesses, announcements, image URLs, and gallery image URLs from the backend. PostgreSQL table data must use the response fields shown in `backend/README.md`.
+
 Notes
 
 - I created a basic `App.tsx` with React Navigation and two placeholder screens.

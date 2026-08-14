@@ -4,12 +4,15 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useNotifications } from '../context/NotificationContext'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useWindowDimensions } from 'react-native'
 
 export default function MobileHeader({ navigation }: { navigation: any }) {
   const insets = useSafeAreaInsets()
   const { user } = useAuth()
   const { language, setLanguage, t } = useLanguage()
   const { notifications, clearNotifications } = useNotifications()
+  const { width } = useWindowDimensions()
+  const isCompact = width < 430
   const [showNotifications, setShowNotifications] = useState(false)
   const [selectedNotification, setSelectedNotification] = useState<typeof notifications[number] | null>(null)
 
@@ -29,10 +32,10 @@ export default function MobileHeader({ navigation }: { navigation: any }) {
       </View>
 
       <View style={styles.actions}>
-        <Image
+        {!isCompact && <Image
           source={{ uri: 'https://images.unsplash.com/photo-1500595046743-cd271d694d30?auto=format&fit=crop&w=160&q=80' }}
           style={styles.agriImage}
-        />
+        />}
         <View style={styles.languageToggle}>
           {(['en', 'te'] as const).map((item) => (
             <Pressable key={item} style={[styles.language, language === item && styles.activeLanguage]} onPress={() => setLanguage(item)}>
@@ -42,7 +45,7 @@ export default function MobileHeader({ navigation }: { navigation: any }) {
         </View>
         <Pressable style={styles.profileButton} onPress={() => navigation.navigate('Profile')}>
           <Text style={styles.profileText}>👤</Text>
-          <Text style={styles.profileName}>{user?.name?.split(' ')[0] || t('Login', 'లాగిన్')}</Text>
+          {!isCompact && <Text style={styles.profileName}>{user?.name?.split(' ')[0] || t('Login', 'లాగిన్')}</Text>}
         </Pressable>
         <Pressable
           style={styles.notificationButton}
