@@ -2,6 +2,12 @@
   "expo": {
     "name": "ManaKandukur Mobile",
     "slug": "nagaraju",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#B088C8"
+    },
     "platforms": [
       "ios",
       "android",
