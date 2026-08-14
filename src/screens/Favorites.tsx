@@ -5,6 +5,7 @@ import BottomNav from './BottomNav'
 import { useLanguage } from '../context/LanguageContext'
 import { useNearby } from '../context/NearbyContext'
 import { useDirectory } from '../context/DirectoryContext'
+import { colors } from '../ui/theme'
 
 export default function Favorites({ navigation }: any) {
   const { favorites, isLoggedIn, user, logout } = useAuth()
@@ -16,8 +17,6 @@ export default function Favorites({ navigation }: any) {
 
   return (
     <View style={styles.screen}>
-    <View style={styles.topStrip} />
-
       <View style={styles.pageHeader}>
       <Pressable style={styles.pageBack} onPress={() => navigation.goBack()}><Text style={styles.pageBackText}>←</Text></Pressable>
       <View style={styles.pageHeaderCopy}><Text style={styles.pageKicker}>{t('MY LIST', 'నా జాబితా')}</Text><Text style={styles.pageTitle}>{t('Favorites', 'ఇష్టమైనవి')}</Text></View>
@@ -59,8 +58,7 @@ export default function Favorites({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#EAEAF9' },
-  topStrip: { height: 18, backgroundColor: '#B67870' },
+  screen: { flex: 1, backgroundColor: colors.background },
   pageHeader: { minHeight: 82, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, backgroundColor: '#4A4AD5' },
   pageBack: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', marginRight: 2, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.18)' },
   pageBackText: { color: '#FFF', fontSize: 24, lineHeight: 27, textAlign: 'center' },
@@ -85,7 +83,7 @@ const styles = StyleSheet.create({
   copy: { marginTop: 9, color: '#737385', fontSize: 13, lineHeight: 20, textAlign: 'center' },
   button: { marginTop: 20, paddingHorizontal: 18, paddingVertical: 11, borderRadius: 7, backgroundColor: '#514BD5' },
   buttonText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
-  businessCard: { flexDirection: 'row', alignItems: 'center', padding: 14, marginBottom: 12, borderRadius: 12, borderWidth: 1, borderColor: '#DDE2F5', backgroundColor: '#F8F9FF' },
+  businessCard: { flexDirection: 'row', alignItems: 'center', padding: 14, marginBottom: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
   businessIcon: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', marginRight: 12, backgroundColor: '#EEF0FF' },
   businessIconText: { color: '#514BD5', fontSize: 18, fontWeight: '800' },
   businessBody: { flex: 1 },

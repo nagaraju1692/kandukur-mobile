@@ -1,23 +1,22 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native'
+import { FlatList, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native'
 import BottomNav from './BottomNav'
 import { getBusinessImage } from '../utils/categoryImages'
 import MobileHeader from './MobileHeader'
-import { fetchGoldRate, fetchWeather, GoldRate, WeatherReport } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useReviews } from '../context/ReviewContext'
 import { useNearby } from '../context/NearbyContext'
 import { useDirectory } from '../context/DirectoryContext'
+import DirectoryState from './DirectoryState'
+import { colors } from '../ui/theme'
+import { fetchGoldRate, fetchWeather, GoldRate, WeatherReport } from '../services/api'
 
 const homeCategoryIds = ['1', '2', '3', '4', '21', '22', '6', '7']
 
 const categoryIcons: Record<string, string> = {
   Education: '🎓', Hospitals: '🏥', 'Medical shops': '💊', Restaurants: '🍽️', 'Real Estate': '🏘️', Agriculture: '🌾', Lodges: '🛏️', 'Bus stand': '🚌',
 }
-
-const fallbackWeather: WeatherReport = { temp: '31°C', condition: 'Overcast', humidity: '58% humidity', wind: '18 km/h wind', rainSoon: false, rainMinutes: null, updatedAt: '' }
-const fallbackGold: GoldRate = { pricePerGram: 13352, pricePerSavaram: 106814, pricePerGram22K: 12239, pricePerSavaram22K: 97912, updatedAt: '' }
 
 function localPopularBusinesses(businesses: any[]) {
   return ['2', '4', '3'].flatMap((categoryId) => businesses
@@ -26,12 +25,19 @@ function localPopularBusinesses(businesses: any[]) {
     .slice(0, 2))
 }
 
+function weatherIcon(code: number) {
+  if (code >= 95) return '⛈'
+  if (code >= 61 || (code >= 51 && code <= 57) || (code >= 80 && code <= 82)) return '🌧'
+  if (code >= 2) return '☁'
+  return '☀'
+}
+
 export default function Home({ navigation }: any) {
   const { favorites, toggleFavorite, isLoggedIn } = useAuth()
   const { getReviewStats } = useReviews()
   const { distances, ready, ensureAddresses, sortNearest } = useNearby()
   const { t, category: categoryLabel } = useLanguage()
-  const { businesses, categories, announcements: updates } = useDirectory()
+  const { businesses, categories, announcements: updates, loading, error, retry } = useDirectory()
   const cards = homeCategoryIds.map((id) => categories.find((category) => category.id === id)).filter((category): category is NonNullable<typeof category> => Boolean(category))
   const categoryListingCount = (categoryId: string) => {
     const categoryIds = new Set([categoryId])
@@ -48,17 +54,14 @@ export default function Home({ navigation }: any) {
     return businesses.filter((business) => categoryIds.has(business.categoryId)).length
   }
   const [search, setSearch] = useState('')
-  const [weather, setWeather] = useState<WeatherReport>(fallbackWeather)
-  const [gold, setGold] = useState<GoldRate>(fallbackGold)
+  const [weather, setWeather] = useState<WeatherReport | null>(null)
+  const [gold, setGold] = useState<GoldRate | null>(null)
+  const [utilityLoading, setUtilityLoading] = useState(true)
+  const [selectedUtility, setSelectedUtility] = useState<'weather' | 'gold' | null>(null)
   const [popularBusinesses, setPopularBusinesses] = useState<any[]>([])
-  const [selectedInfo, setSelectedInfo] = useState<'weather' | 'gold' | null>(null)
   const [selectedUpdate, setSelectedUpdate] = useState<typeof updates[number] | null>(null)
-  const announcementRailRef = useRef<ScrollView>(null)
-  const announcementOffsetRef = useRef(0)
-  const announcementContentWidthRef = useRef(0)
-  const announcementLoopThresholdRef = useRef(0)
-  const announcementTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const announcementPausedRef = useRef(false)
+  const [announcementIndex, setAnnouncementIndex] = useState(0)
+  const flatListRef = useRef<FlatList<any>>(null)
   const { width } = useWindowDimensions()
   const isPhone = width < 600
   const horizontalPadding = isPhone ? 18 : 24
@@ -66,20 +69,18 @@ export default function Home({ navigation }: any) {
   const cardGap = 12
   const cardWidth = (width - horizontalPadding * 2 - cardGap * (columns - 1)) / columns
 
-  useEffect(() => {
-    fetchWeather().then(setWeather).catch(() => undefined)
-    fetchGoldRate().then(setGold).catch(() => undefined)
-  }, [])
-
-  useEffect(() => {
-    if (selectedInfo !== 'weather') return
-    const refreshWeather = () => fetchWeather().then(setWeather).catch(() => undefined)
-    refreshWeather()
-    const timer = setInterval(refreshWeather, 60000)
-    return () => clearInterval(timer)
-  }, [selectedInfo])
-
   useEffect(() => { setPopularBusinesses(localPopularBusinesses(businesses)) }, [businesses])
+
+  useEffect(() => {
+    let active = true
+    Promise.allSettled([fetchWeather(), fetchGoldRate()]).then(([weatherResult, goldResult]) => {
+      if (!active) return
+      if (weatherResult.status === 'fulfilled') setWeather(weatherResult.value)
+      if (goldResult.status === 'fulfilled') setGold(goldResult.value)
+      setUtilityLoading(false)
+    })
+    return () => { active = false }
+  }, [])
 
   const activeAnnouncements = useMemo(() => {
     const now = Date.now()
@@ -90,36 +91,28 @@ export default function Home({ navigation }: any) {
     })
   }, [updates])
 
-  const announcementItems = activeAnnouncements.length > 1 ? [...activeAnnouncements, ...activeAnnouncements] : activeAnnouncements
+  const announcementItems = activeAnnouncements
 
   useEffect(() => {
-    const startAnnouncementLoop = () => {
-      if (announcementTimerRef.current) clearInterval(announcementTimerRef.current)
-      announcementTimerRef.current = setInterval(() => {
-        if (announcementPausedRef.current) return
-        const rail = announcementRailRef.current
-        if (!rail) return
-        const loopThreshold = Math.max(0, announcementLoopThresholdRef.current)
-        const step = 130
-        const nextX = announcementOffsetRef.current + step
+    if (announcementItems.length <= 1) return
 
-        if (loopThreshold > 0 && nextX >= loopThreshold) {
-          const wrappedX = nextX - loopThreshold
-          rail.scrollTo({ x: wrappedX, y: 0, animated: false })
-          announcementOffsetRef.current = wrappedX
-          return
-        }
+    const timer = setInterval(() => {
+      const nextIndex = (announcementIndex + 1) % announcementItems.length
+      setAnnouncementIndex(nextIndex)
+      flatListRef.current?.scrollToIndex({
+        animated: true,
+        index: nextIndex,
+        viewPosition: 0.5,
+      })
+    }, 3000)
 
-        rail.scrollTo({ x: nextX, y: 0, animated: true })
-        announcementOffsetRef.current = nextX
-      }, 6500)
-    }
+    return () => clearInterval(timer)
+  }, [announcementItems.length, announcementIndex])
 
-    startAnnouncementLoop()
-    return () => {
-      if (announcementTimerRef.current) clearInterval(announcementTimerRef.current)
-    }
-  }, [width, updates.length])
+  useEffect(() => {
+    setAnnouncementIndex(0)
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: false })
+  }, [announcementItems.length])
 
   useEffect(() => { if (ready) ensureAddresses(popularBusinesses.map((business) => ({ id: business.id, address: business.address, latitude: business.latitude, longitude: business.longitude }))) }, [popularBusinesses.length, ready, ensureAddresses])
 
@@ -128,6 +121,7 @@ export default function Home({ navigation }: any) {
       <MobileHeader navigation={navigation} />
 
       <ScrollView style={styles.contentWrap} contentContainerStyle={[styles.content, { paddingHorizontal: horizontalPadding }]} showsVerticalScrollIndicator={false}>
+        <DirectoryState loading={loading} error={error} onRetry={retry} />
         <View style={styles.searchBar}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
@@ -145,52 +139,52 @@ export default function Home({ navigation }: any) {
 
         <View style={styles.locationRow}><Text style={styles.locationPin}>📍</Text><Text style={styles.locationText}>{t('Kandukur, Andhra Pradesh', 'కందుకూరు, ఆంధ్రప్రదేశ్')}</Text></View>
 
-        <View style={styles.infoRow}>
-          <Pressable style={[styles.infoCard, styles.weatherCard]} onPress={() => setSelectedInfo('weather')}>
-            <Text style={styles.infoLabel}>🌤️ WEATHER</Text>
-            <Text style={styles.infoValue}>{weather.temp}</Text>
-            <Text style={styles.infoText}>{weather.condition} · {weather.humidity}</Text>
-            <Text style={styles.infoText}>{weather.wind}</Text>
+        <View style={styles.utilityRow}>
+          <Pressable style={[styles.utilityCard, styles.weatherUtility]} onPress={() => setSelectedUtility('weather')}>
+            <View style={styles.utilityHeading}><Text style={styles.utilityIcon}>☀</Text><Text style={styles.utilityLabel}>{t('TODAY’S WEATHER', 'ఈరోజు వాతావరణం')}</Text></View>
+            <Text style={styles.utilityValue}>{weather?.temp || (utilityLoading ? 'Loading…' : 'Unavailable')}</Text>
+            <Text style={styles.utilityText}>{weather ? `${weather.condition} · ${weather.humidity}` : 'Kandukur area'}</Text>
+            {weather && <Text style={styles.utilityText}>{weather.wind}</Text>}
           </Pressable>
-          <Pressable style={styles.infoCard} onPress={() => setSelectedInfo('gold')}>
-            <Text style={styles.infoLabel}>🥇 🥈 RATES</Text>
-            <Text style={styles.infoValue}>22K: ₹{gold.pricePerSavaram22K.toLocaleString('en-IN')} <Text style={styles.infoSmall}>/ 8g</Text></Text>
-            <Text style={styles.infoValue}>24K: ₹{gold.pricePerSavaram.toLocaleString('en-IN')} <Text style={styles.infoSmall}>/ 8g</Text></Text>
+          <Pressable style={[styles.utilityCard, styles.goldUtility]} onPress={() => setSelectedUtility('gold')}>
+            <View style={styles.utilityHeading}><Text style={styles.utilityIcon}>₹</Text><Text style={styles.utilityLabel}>{t('GOLD RATE TODAY', 'ఈరోజు బంగారం ధర')}</Text></View>
+            <Text style={styles.utilityRateLabel}>22K · 8g savaram</Text>
+            <Text style={styles.goldRateValue}>{gold ? `₹${gold.pricePerSavaram22K.toLocaleString('en-IN')}` : utilityLoading ? 'Loading…' : 'Unavailable'}</Text>
+            <Text style={styles.utilityRateLabel}>24K · 8g <Text style={styles.secondaryGoldRate}>{gold ? `₹${gold.pricePerSavaram.toLocaleString('en-IN')}` : '—'}</Text></Text>
           </Pressable>
         </View>
 
         {activeAnnouncements.length > 0 && (
           <>
             <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>{t('Latest in Kandukur', 'కందుకూరులో తాజా సమాచారం')}</Text><Text style={styles.updateCount}>{activeAnnouncements.length} {t('updates', 'అప్‌డేట్లు')}</Text></View>
-            <View style={styles.announcementWrap}>
-              <Pressable style={[styles.announcementArrow, styles.announcementArrowLeft]} onPress={() => announcementRailRef.current?.scrollTo({ x: 0, animated: true })}><Text style={styles.announcementArrowText}>‹</Text></Pressable>
-              <ScrollView
-                ref={announcementRailRef}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.updateRail}
-                onTouchStart={() => { announcementPausedRef.current = true }}
-                onTouchEnd={() => { announcementPausedRef.current = false }}
-                onTouchCancel={() => { announcementPausedRef.current = false }}
-                onScroll={({ nativeEvent }) => {
-                  announcementOffsetRef.current = nativeEvent.contentOffset.x
-                }}
-                onContentSizeChange={(contentWidth) => {
-                  announcementContentWidthRef.current = contentWidth
-                  announcementLoopThresholdRef.current = contentWidth / 2
-                }}
-                scrollEventThrottle={16}
-              >
-                {announcementItems.map((update, index) => (
-                  <Pressable key={`${update.id}-${index}`} style={styles.updateCard} onPress={() => setSelectedUpdate(update)}>
-                    <Image source={{ uri: update.image }} style={styles.updateImage} resizeMode="cover" />
-                    <View style={styles.updateShade} />
-                    <View style={styles.updateCopy}><Text style={styles.updateTitle}>{update.title}</Text><Text style={styles.updateDetail}>{update.detail}</Text><Text style={styles.updateLocation}>Kandukur, Andhra Pradesh</Text></View>
-                  </Pressable>
-                ))}
-              </ScrollView>
-              <Pressable style={[styles.announcementArrow, styles.announcementArrowRight]} onPress={() => announcementRailRef.current?.scrollToEnd({ animated: true })}><Text style={styles.announcementArrowText}>›</Text></Pressable>
-            </View>
+            <FlatList
+              ref={flatListRef}
+              horizontal
+              nestedScrollEnabled
+              directionalLockEnabled
+              alwaysBounceHorizontal
+              data={announcementItems}
+              keyExtractor={(update) => update.id}
+              onMomentumScrollEnd={(event) => {
+                const offsetX = event.nativeEvent.contentOffset.x
+                const index = Math.round(offsetX / (width * 0.9))
+                if (index >= 0 && index < announcementItems.length) {
+                  setAnnouncementIndex(index)
+                }
+              }}
+              renderItem={({ item: update }) => (
+                <Pressable style={styles.updateCard} onPress={() => setSelectedUpdate(update)}>
+                  <Image source={{ uri: update.image }} style={styles.updateImage} resizeMode="cover" />
+                  <View style={styles.updateShade} />
+                  <View style={styles.updateCopy}><Text style={styles.updateTitle}>{update.title}</Text><Text style={styles.updateDetail}>{update.detail}</Text><Text style={styles.updateLocation}>Kandukur, Andhra Pradesh</Text></View>
+                </Pressable>
+              )}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.updateRail}
+              scrollEnabled
+              bounces
+              decelerationRate="fast"
+            />
           </>
         )}
 
@@ -214,7 +208,7 @@ export default function Home({ navigation }: any) {
           ))}
         </View>
 
-        <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>{t('Popular Near You', 'మీకు సమీపంలోని ప్రసిద్ధ ప్రదేశాలు')}</Text><Pressable onPress={() => navigation.navigate('Businesses')}><Text style={styles.viewAll}>{t('View all', 'అన్నీ చూడండి')} →</Text></Pressable></View>
+        <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>{t('Popular Near You', 'మీకు సమీపంలోని ప్రసిద్ధ ప్రదేశాలు')}</Text><Pressable onPress={() => navigation.navigate('Categories')}><Text style={styles.viewAll}>{t('View all', 'అన్నీ చూడండి')} →</Text></Pressable></View>
         <View style={styles.popularList}>
           {sortNearest(popularBusinesses).map((business) => {
             const isFavorite = favorites.includes(business.id)
@@ -240,35 +234,24 @@ export default function Home({ navigation }: any) {
           })}
         </View>
       </ScrollView>
-      <Modal visible={selectedInfo !== null} transparent animationType="fade" onRequestClose={() => setSelectedInfo(null)}>
+      <Modal visible={selectedUtility !== null} transparent animationType="fade" onRequestClose={() => setSelectedUtility(null)}>
         <View style={styles.modalBackdrop}>
-          <View style={styles.detailModal}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalBadge}>{selectedInfo === 'weather' ? '🌤️ Weather details' : '🥇 Gold rate details'}</Text>
-              <Pressable style={styles.modalClose} onPress={() => setSelectedInfo(null)}><Text style={styles.modalCloseText}>×</Text></Pressable>
+          <View style={styles.utilityModal}>
+            <View style={styles.utilityModalHeader}>
+              <Text style={styles.utilityModalTitle}>{selectedUtility === 'weather' ? t('Today’s weather', 'ఈరోజు వాతావరణం') : t('Gold rate today', 'ఈరోజు బంగారం ధర')}</Text>
+              <Pressable style={styles.modalClose} onPress={() => setSelectedUtility(null)}><Text style={styles.modalCloseText}>×</Text></Pressable>
             </View>
-            {selectedInfo === 'weather' ? (
-              <>
-                <Text style={styles.modalTitle}>{weather.temp} · {weather.condition}</Text>
-                <Text style={styles.modalLine}>humidity: {weather.humidity.replace(' humidity', '')}</Text>
-                <Text style={styles.modalLine}>wind: {weather.wind.replace(' wind', '')}</Text>
-                <Text style={styles.modalLine}>Updated: {weather.updatedAt ? new Date(weather.updatedAt).toLocaleString() : 'Just now'}</Text>
-                <View style={styles.outlookBox}>
-                  <Text style={styles.outlookTitle}>RAIN OUTLOOK</Text>
-                  <Text style={styles.outlookText}>{weather.rainSoon ? `Rain expected in about ${weather.rainMinutes ?? 15} minutes.` : 'No rain expected in the next 15 minutes.'}</Text>
-                </View>
-                <Text style={styles.modalFooter}>Live Kandukur weather</Text>
-              </>
+            {selectedUtility === 'weather' ? (
+              weather ? <ScrollView style={styles.weatherDetails} showsVerticalScrollIndicator={false}>
+                <View style={styles.weatherCurrent}><Text style={styles.weatherCurrentIcon}>{weatherIcon(weather.daily[0]?.code ?? 0)}</Text><View><Text style={styles.utilityModalValue}>{weather.temp}</Text><Text style={styles.utilityModalLine}>{weather.condition}</Text></View><View style={styles.weatherCurrentMeta}><Text style={styles.weatherMetaText}>{weather.humidity}</Text><Text style={styles.weatherMetaText}>{weather.wind}</Text></View></View>
+                <Text style={styles.forecastHeading}>{t('Hourly forecast', 'గంటల వారీ అంచనా')}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hourlyRail}>{weather.hourly.map((hour) => <View key={hour.time} style={styles.hourlyItem}><Text style={styles.forecastTime}>{new Date(hour.time).toLocaleTimeString([], { hour: 'numeric' })}</Text><Text style={styles.forecastIcon}>{weatherIcon(hour.code)}</Text><Text style={styles.forecastTemp}>{hour.temp}°</Text></View>)}</ScrollView>
+                <Text style={styles.forecastHeading}>{t('7-day forecast', '7 రోజుల అంచనా')}</Text>
+                <View style={styles.dailyList}>{weather.daily.map((day) => <View key={day.date} style={styles.dailyItem}><Text style={styles.dailyDay}>{new Date(day.date).toLocaleDateString([], { weekday: 'short' })}</Text><Text style={styles.forecastIcon}>{weatherIcon(day.code)}</Text><Text style={styles.dailyTemp}>{day.max}° <Text style={styles.dailyMin}>{day.min}°</Text></Text></View>)}</View>
+                <Text style={styles.utilityModalFoot}>Kandukur area · Updated {new Date(weather.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+              </ScrollView> : <Text style={styles.utilityModalLine}>{utilityLoading ? 'Loading…' : 'Weather unavailable right now.'}</Text>
             ) : (
-              <>
-                <Text style={styles.modalTitle}>22K: ₹{gold.pricePerGram22K.toLocaleString('en-IN')} / gram</Text>
-                <Text style={styles.modalLine}>22K, 8g savaram: ₹{gold.pricePerSavaram22K.toLocaleString('en-IN')}</Text>
-                <Text style={styles.modalLine}>24K: ₹{gold.pricePerGram.toLocaleString('en-IN')} / gram</Text>
-                <Text style={styles.modalLine}>24K, 8g savaram: ₹{gold.pricePerSavaram.toLocaleString('en-IN')}</Text>
-                <Text style={styles.modalLine}>Live spot-gold conversion for Ongole area</Text>
-                <Text style={styles.modalLine}>Updated: {gold.updatedAt ? new Date(gold.updatedAt).toLocaleString() : 'Just now'}</Text>
-                <Text style={styles.modalFooter}>Live market rate</Text>
-              </>
+              gold ? <><Text style={styles.utilityModalValue}>22K · ₹{gold.pricePerSavaram22K.toLocaleString('en-IN')} / 8g</Text><Text style={styles.utilityModalLine}>24K · ₹{gold.pricePerSavaram.toLocaleString('en-IN')} / 8g</Text><Text style={styles.utilityModalFoot}>Daily market rate · Updated {gold.updatedAt ? new Date(gold.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'today'}</Text></> : <Text style={styles.utilityModalLine}>{utilityLoading ? 'Loading…' : 'Gold rate unavailable right now.'}</Text>
             )}
           </View>
         </View>
@@ -299,7 +282,7 @@ export default function Home({ navigation }: any) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#E8E9F8',
+    backgroundColor: colors.background,
   },
   header: {
     paddingTop: 26,
@@ -335,35 +318,53 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: 18,
-    paddingTop: 20,
+    paddingHorizontal: 16,
+    paddingTop: 18,
     paddingBottom: 120,
   },
   searchBar: { flexDirection: 'row', alignItems: 'center', minHeight: 48, paddingHorizontal: 16, borderRadius: 25, borderWidth: 1, borderColor: '#D9CFC7', backgroundColor: '#FFFDFB', shadowColor: '#2C2621', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
   searchIcon: { marginRight: 10, fontSize: 18 },
   searchInput: { flex: 1, height: 42, paddingVertical: 0, paddingHorizontal: 0, borderWidth: 0, outlineWidth: 0, outlineStyle: 'solid', outlineColor: 'transparent', backgroundColor: 'transparent', color: '#2D2F43', fontSize: 15, fontWeight: '600' },
+  modalBackdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 18, backgroundColor: 'rgba(24, 24, 32, 0.56)' },
+  modalClose: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: '#F3F0EB' },
+  modalCloseText: { color: '#5C5A57', fontSize: 24, lineHeight: 26 },
   locationRow: { flexDirection: 'row', alignItems: 'center', marginTop: 14, marginBottom: 12 },
   locationPin: { marginRight: 8, fontSize: 15 },
   locationText: { color: '#3C3D4C', fontSize: 14, fontWeight: '600' },
-  infoRow: { flexDirection: 'row', gap: 10 },
-  infoCard: { flex: 1, minHeight: 111, padding: 12, borderRadius: 13, borderWidth: 1, borderColor: '#E6DED8', backgroundColor: '#FFFDFB' },
-  weatherCard: { backgroundColor: '#F5F8FA' },
-  infoLabel: { color: '#454653', fontSize: 12, fontWeight: '800', letterSpacing: 0.6 },
-  infoValue: { marginTop: 8, color: '#252637', fontSize: 17, fontWeight: '800' },
-  infoSmall: { fontSize: 10, fontWeight: '500' },
-  infoText: { marginTop: 4, color: '#444755', fontSize: 11, lineHeight: 16 },
-  modalBackdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 18, backgroundColor: 'rgba(24, 24, 32, 0.56)' },
-  detailModal: { width: '100%', maxWidth: 440, padding: 18, borderRadius: 22, backgroundColor: '#FFFDFB' },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  modalBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, overflow: 'hidden', color: '#42647D', backgroundColor: '#DDF0FA', fontSize: 12, fontWeight: '800' },
-  modalClose: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: '#F3F0EB' },
-  modalCloseText: { color: '#5C5A57', fontSize: 24, lineHeight: 26 },
-  modalTitle: { marginTop: 24, color: '#302C2A', fontSize: 26, fontWeight: '800' },
-  modalLine: { marginTop: 13, color: '#5F5B58', fontSize: 15 },
-  outlookBox: { marginTop: 22, padding: 15, borderRadius: 17, borderWidth: 1, borderColor: '#CFD9C8', backgroundColor: '#EEF2EA' },
-  outlookTitle: { color: '#4E6C4D', fontSize: 13, fontWeight: '800', letterSpacing: 0.5 },
-  outlookText: { marginTop: 10, color: '#4E6C4D', fontSize: 15, fontWeight: '700', lineHeight: 20 },
-  modalFooter: { marginTop: 22, color: '#77716D', fontSize: 13 },
+  utilityRow: { flexDirection: 'row', gap: 10, marginTop: 4, marginBottom: 4 },
+  utilityCard: { flex: 1, minHeight: 104, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
+  weatherUtility: { backgroundColor: '#F4F8FF' },
+  goldUtility: { backgroundColor: '#FFF8EC' },
+  utilityHeading: { flexDirection: 'row', alignItems: 'center' },
+  utilityIcon: { width: 24, height: 24, marginRight: 6, borderRadius: 12, color: '#FFF', backgroundColor: colors.primary, fontSize: 14, fontWeight: '800', lineHeight: 24, textAlign: 'center' },
+  utilityLabel: { flex: 1, color: colors.muted, fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
+  utilityValue: { marginTop: 10, color: colors.text, fontSize: 18, fontWeight: '800' },
+  utilityText: { marginTop: 4, color: colors.muted, fontSize: 11, lineHeight: 15 },
+  utilityRateLabel: { marginTop: 10, color: colors.muted, fontSize: 10, fontWeight: '800' },
+  goldRateValue: { marginTop: 2, color: '#9A5B00', fontSize: 19, fontWeight: '900' },
+  secondaryGoldRate: { color: colors.text, fontSize: 12, fontWeight: '800' },
+  utilityModal: { width: '100%', maxWidth: 420, padding: 18, borderRadius: 16, backgroundColor: colors.surface },
+  utilityModalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  utilityModalTitle: { color: colors.text, fontSize: 19, fontWeight: '800' },
+  utilityModalValue: { marginTop: 20, color: colors.text, fontSize: 22, fontWeight: '900' },
+  utilityModalLine: { marginTop: 10, color: colors.muted, fontSize: 14, fontWeight: '700' },
+  utilityModalFoot: { marginTop: 18, color: colors.muted, fontSize: 11 },
+  weatherDetails: { maxHeight: 560 },
+  weatherCurrent: { flexDirection: 'row', alignItems: 'center', paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
+  weatherCurrentIcon: { marginRight: 12, fontSize: 42 },
+  weatherCurrentMeta: { flex: 1, alignItems: 'flex-end' },
+  weatherMetaText: { marginTop: 3, color: colors.muted, fontSize: 11 },
+  forecastHeading: { marginTop: 18, color: colors.text, fontSize: 13, fontWeight: '800' },
+  hourlyRail: { gap: 8, paddingTop: 10, paddingBottom: 4 },
+  hourlyItem: { width: 58, alignItems: 'center', paddingVertical: 8, borderRadius: 8, backgroundColor: '#FFF8EC' },
+  forecastTime: { color: colors.muted, fontSize: 10 },
+  forecastIcon: { marginTop: 7, fontSize: 20 },
+  forecastTemp: { marginTop: 5, color: colors.text, fontSize: 12, fontWeight: '800' },
+  dailyList: { marginTop: 8, borderTopWidth: 1, borderTopColor: colors.border },
+  dailyItem: { minHeight: 38, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F0EEF2' },
+  dailyDay: { width: 52, color: colors.text, fontSize: 12, fontWeight: '700' },
+  dailyTemp: { marginLeft: 'auto', color: colors.text, fontSize: 12, fontWeight: '800' },
+  dailyMin: { color: colors.muted, fontWeight: '500' },
   announcementModal: { width: '100%', maxWidth: 480, overflow: 'hidden', borderRadius: 22, backgroundColor: '#FFFDFB' },
   announcementModalImage: { width: '100%', height: 220, backgroundColor: '#222' },
   announcementModalBody: { padding: 20 },
@@ -373,16 +374,11 @@ const styles = StyleSheet.create({
   announcementModalDetail: { marginTop: 7, color: '#D35B50', fontSize: 14, fontWeight: '800', lineHeight: 20 },
   announcementModalDescription: { marginTop: 16, color: '#5F5B58', fontSize: 15, lineHeight: 23 },
   silver: { color: '#5661B8', fontWeight: '800' },
-  sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 28, marginBottom: 12 },
+  sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 26, marginBottom: 12 },
   sectionTitle: { color: '#202332', fontSize: 20, fontWeight: '800' },
   updateCount: { color: '#414352', fontSize: 12, fontWeight: '700' },
   viewAll: { color: '#D35B50', fontSize: 13, fontWeight: '800' },
   updateRail: { gap: 12, paddingRight: 4 },
-  announcementWrap: { position: 'relative' },
-  announcementArrow: { position: 'absolute', top: 42, zIndex: 2, width: 30, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 15, borderWidth: 1, borderColor: '#E3D8D3', backgroundColor: '#FFFDFB' },
-  announcementArrowLeft: { left: -14 },
-  announcementArrowRight: { right: -14 },
-  announcementArrowText: { color: '#D35B50', fontSize: 29, lineHeight: 31 },
   updateCard: { width: 150, height: 126, overflow: 'hidden', borderRadius: 18, backgroundColor: '#222' },
   updateImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   updateShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.48)' },
@@ -423,18 +419,18 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   card: {
-    minHeight: 166,
+    minHeight: 152,
     paddingHorizontal: 14,
     paddingTop: 14,
-    paddingBottom: 14,
+    paddingBottom: 12,
     backgroundColor: '#F7F8FF',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#DDDFF5',
     justifyContent: 'space-between',
   },
   phoneCard: {
-    minHeight: 170,
+    minHeight: 156,
     paddingHorizontal: 12,
     paddingTop: 12,
   },
@@ -465,7 +461,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   popularList: { gap: 14, paddingBottom: 8 },
-  businessCard: { overflow: 'hidden', borderRadius: 20, borderWidth: 1, borderColor: '#E7CFC5', backgroundColor: '#FFFDFB', shadowColor: '#8C5B4B', shadowOpacity: 0.1, shadowRadius: 5, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
+  businessCard: { overflow: 'hidden', borderRadius: 20, borderWidth: 1, borderColor: '#E7CFC5', backgroundColor: '#FFFDFB', shadowColor: '#8C5B4B', shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   businessImageWrap: { height: 190, position: 'relative', backgroundColor: '#E7E9FA' },
   businessImage: { width: '100%', height: '100%' },
   openBadge: { position: 'absolute', top: 10, right: 10, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: 'rgba(93, 141, 81, 0.75)' },

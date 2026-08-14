@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Image } from 'react-native'
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Image } from 'react-native'
 import { buildGoogleMapsDirectionsUrl } from '../services/api'
 import BottomNav from './BottomNav'
 import MobileHeader from './MobileHeader'
@@ -10,6 +10,8 @@ import { useReviews } from '../context/ReviewContext'
 import { useNearby } from '../context/NearbyContext'
 import { useSubmittedListings } from '../context/SubmittedListingsContext'
 import { useDirectory } from '../context/DirectoryContext'
+import DirectoryState from './DirectoryState'
+import { colors } from '../ui/theme'
 
 const subcategoryIcons: Record<string, string> = {
   'Plots for Sale': '📐', 'Property Agents': '🤝', 'Tobacco Boards': '🌿', 'Vegetable Markets': '🥕',
@@ -27,9 +29,7 @@ export default function Businesses({ navigation, route }: any) {
   const { getReviewStats } = useReviews()
   const { distances, ready, ensureAddresses, sortNearest, location } = useNearby()
   const { markSoldOut } = useSubmittedListings()
-  const { businesses, categories } = useDirectory()
-  const [showPropertyForm, setShowPropertyForm] = useState(false)
-  const [propertyForm, setPropertyForm] = useState({ name: '', phone: '', type: 'Direct owner', gadhulu: '', face: '', location: '' })
+  const { businesses, categories, loading, error, retry } = useDirectory()
   const [sortMode, setSortMode] = useState<'nearest' | 'rating' | 'newest'>('nearest')
   const [minRating, setMinRating] = useState(0)
   const [distanceFilter, setDistanceFilter] = useState(20)
@@ -74,7 +74,6 @@ export default function Businesses({ navigation, route }: any) {
         </View>
 
         <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-          {category?.name === 'Real Estate' && <Pressable style={styles.sellPropertyButton} onPress={() => setShowPropertyForm(true)}><Text style={styles.sellPropertyIcon}>＋</Text><View><Text style={styles.sellPropertyTitle}>{t('Sell a property', 'ఆస్తిని అమ్మండి')}</Text><Text style={styles.sellPropertyCopy}>{t('Add plot, owner and location details', 'ప్లాట్, యజమాని మరియు ప్రదేశ వివరాలు జోడించండి')}</Text></View></Pressable>}
           {childCategories.map(item => (
             <Pressable
               key={item.id}
@@ -87,16 +86,6 @@ export default function Businesses({ navigation, route }: any) {
             </Pressable>
           ))}
         </ScrollView>
-        <Modal visible={showPropertyForm} transparent animationType="slide" onRequestClose={() => setShowPropertyForm(false)}>
-          <View style={styles.formBackdrop}><View style={styles.propertyForm}>
-            <View style={styles.formHeader}><Text style={styles.formTitle}>{t('Sell a property', 'ఆస్తిని అమ్మండి')}</Text><Pressable onPress={() => setShowPropertyForm(false)}><Text style={styles.formClose}>×</Text></Pressable></View>
-            {([
-              ['name', t('Name', 'పేరు')], ['phone', t('Mobile number', 'మొబైల్ నంబర్')], ['location', t('Location', 'ప్రదేశం')], ['gadhulu', t('No. of gadhulu', 'గదుల సంఖ్య')], ['face', t('Plot face', 'ప్లాట్ ముఖదిశ')],
-            ] as const).map(([field, label]) => <TextInput key={field} style={styles.formInput} placeholder={label} placeholderTextColor="#777" value={propertyForm[field]} onChangeText={(value) => setPropertyForm((current) => ({ ...current, [field]: value }))} />)}
-            <Text style={styles.formLabel}>{t('Seller type', 'విక్రేత రకం')}</Text><View style={styles.typeOptions}>{(['Direct owner', 'Agent'] as const).map((type) => <Pressable key={type} style={[styles.typeOption, propertyForm.type === type && styles.typeOptionActive]} onPress={() => setPropertyForm((current) => ({ ...current, type }))}><Text style={styles.typeOptionText}>{t(type, type === 'Agent' ? 'ఏజెంట్' : 'ప్రత్యక్ష యజమాని')}</Text></Pressable>)}</View>
-            <Pressable style={styles.formSubmit} onPress={() => { setShowPropertyForm(false); Alert.alert(t('Submitted', 'సమర్పించబడింది'), t('Your property will be reviewed before publishing.', 'ప్రచురించే ముందు మీ ఆస్తి వివరాలను పరిశీలిస్తాము.')) }}><Text style={styles.formSubmitText}>{t('Submit property', 'ఆస్తిని సమర్పించండి')}</Text></Pressable>
-          </View></View>
-        </Modal>
         <BottomNav navigation={navigation} active="Categories" />
       </View>
     )
@@ -112,6 +101,7 @@ export default function Businesses({ navigation, route }: any) {
       </View>
 
       <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+        <DirectoryState loading={loading} error={error} onRetry={retry} />
         <View style={styles.filterBar}>
           <View style={styles.filterChipRow}>
             {(['nearest', 'rating', 'newest'] as const).map((mode) => (
@@ -140,12 +130,12 @@ export default function Businesses({ navigation, route }: any) {
               <View style={styles.cardTitleRow}><Text style={styles.cardTitle}>{business.name}</Text><Pressable onPress={() => isLoggedIn ? toggleFavorite(business.id) : navigation.navigate('Profile')}><Text style={styles.favorite}>{favorites.includes(business.id) ? '♥' : '♡'}</Text></Pressable><Pressable onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.address)}`)}><Text style={styles.pin}>📍</Text></Pressable></View>
               <View style={styles.ratingRow}><Text style={styles.rating}>{getReviewStats(business.id).rating.toFixed(1)}</Text><Text style={styles.stars}>★★★★★</Text><Text style={styles.reviews}>({getReviewStats(business.id).count})</Text><Text style={styles.typePill}>{categoryLabel(business.categoryName)}</Text></View>
               <Text style={styles.cardPhone}>{business.phone || 'N/A'}</Text>
-              <Text style={[styles.openStatus, business.status === 'Sold out' && styles.soldOutStatus]}>{business.status === 'Sold out' ? t('Sold out', 'అమ్ముడైంది') : business.status === 'Pending review' ? t('Pending review', 'సమీక్షలో ఉంది') : t('Open · Closes 10 pm', 'తెరిచి ఉంది · రాత్రి 10కి మూసివేస్తుంది')}</Text>
+              {business.status === 'Sold out' && <Text style={[styles.openStatus, styles.soldOutStatus]}>{t('Sold out', 'అమ్ముడైంది')}</Text>}
               <Text style={styles.cardAddress}>{business.address}</Text>
               <Text style={styles.cardDistance}>{(distances[business.id] ?? distances[business.address]) !== undefined ? `📍 ${((distances[business.id] ?? distances[business.address]) as number).toFixed(1)} km away` : '📍 Finding distance…'}</Text>
               <Text style={styles.cardDescription} numberOfLines={3}>{business.description}</Text>
             </View></View>
-            <View style={styles.cardActions}><Pressable style={styles.directionButton} onPress={() => Linking.openURL(buildGoogleMapsDirectionsUrl({ latitude: business.latitude, longitude: business.longitude }, location ?? undefined))}><Text style={styles.directionText}>{t('Directions', 'దిశలు')}</Text></Pressable><Pressable style={styles.websiteButton} onPress={() => business.website && business.website !== 'N/A' ? Linking.openURL(business.website) : Alert.alert(t('Website unavailable', 'వెబ్‌సైట్ అందుబాటులో లేదు'), t('This listing does not have a website.', 'ఈ లిస్టింగ్‌కు వెబ్‌సైట్ లేదు.'))}><Text style={styles.websiteText}>{t('Website', 'వెబ్‌సైట్')}</Text></Pressable>{business.submittedBy === user?.name && business.status !== 'Sold out' && <Pressable style={styles.soldOutButton} onPress={() => markSoldOut(business.id)}><Text style={styles.soldOutText}>{t('Mark sold out', 'అమ్ముడైనట్లు గుర్తించండి')}</Text></Pressable>}</View>
+            <View style={styles.cardActions}><Pressable style={styles.directionButton} onPress={() => Linking.openURL(buildGoogleMapsDirectionsUrl({ latitude: business.latitude, longitude: business.longitude }, location ?? undefined))}><Text style={styles.directionText}>{t('Directions', 'దిశలు')}</Text></Pressable><Pressable style={styles.websiteButton} onPress={() => business.website && business.website !== 'N/A' ? Linking.openURL(business.website) : Alert.alert(t('Website unavailable', 'వెబ్‌సైట్ అందుబాటులో లేదు'), t('This listing does not have a website.', 'ఈ లిస్టింగ్‌కు వెబ్‌సైట్ లేదు.'))}><Text style={styles.websiteText}>{t('Website', 'వెబ్‌సైట్')}</Text></Pressable>{business.submittedBy === user?.phone && business.status !== 'Sold out' && <Pressable style={styles.soldOutButton} onPress={() => markSoldOut(business.id)}><Text style={styles.soldOutText}>{t('Mark sold out', 'అమ్ముడైనట్లు గుర్తించండి')}</Text></Pressable>}</View>
           </Pressable>
         ))}
 
@@ -163,7 +153,7 @@ export default function Businesses({ navigation, route }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#EAEAF9',
+    backgroundColor: colors.background,
   },
   subHeader: { minHeight: 80, paddingHorizontal: 14, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', backgroundColor: '#4A4AD5' },
   headerBack: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', marginRight: 12, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.18)' },
@@ -191,23 +181,6 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 110,
   },
-  sellPropertyButton: { flexDirection: 'row', alignItems: 'center', padding: 14, marginBottom: 14, borderRadius: 14, borderWidth: 1, borderColor: '#E5B8A8', backgroundColor: '#FFF2EA' },
-  sellPropertyIcon: { width: 38, height: 38, marginRight: 12, borderRadius: 19, color: '#C95E49', backgroundColor: '#FFE1D1', fontSize: 25, lineHeight: 36, textAlign: 'center' },
-  sellPropertyTitle: { color: '#A84F3E', fontSize: 16, fontWeight: '800' },
-  sellPropertyCopy: { marginTop: 3, color: '#75615B', fontSize: 11 },
-  formBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(25,24,25,0.58)' },
-  propertyForm: { padding: 20, borderTopLeftRadius: 22, borderTopRightRadius: 22, backgroundColor: '#FFFDFB' },
-  formHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  formTitle: { color: '#302C2A', fontSize: 21, fontWeight: '800' },
-  formClose: { color: '#5C5A57', fontSize: 28 },
-  formInput: { minHeight: 44, marginTop: 10, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: '#DDD6D1', color: '#302C2A', backgroundColor: '#FFFCFA' },
-  formLabel: { marginTop: 14, color: '#5C554F', fontSize: 12, fontWeight: '800' },
-  typeOptions: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  typeOption: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#DDD6D1' },
-  typeOptionActive: { borderColor: '#D35B50', backgroundColor: '#FFF0E9' },
-  typeOptionText: { color: '#5C554F', fontSize: 12, fontWeight: '700' },
-  formSubmit: { marginTop: 18, alignItems: 'center', paddingVertical: 13, borderRadius: 8, backgroundColor: '#514BD5' },
-  formSubmitText: { color: '#FFF', fontSize: 14, fontWeight: '800' },
   card: {
     padding: 12,
     marginBottom: 16,
@@ -293,7 +266,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 15,
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     marginBottom: 12,
     borderRadius: 12,
     backgroundColor: '#F8F9FF',

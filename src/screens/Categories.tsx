@@ -5,6 +5,8 @@ import getCategoryImage from '../utils/categoryImages'
 import MobileHeader from './MobileHeader'
 import { useLanguage } from '../context/LanguageContext'
 import { useDirectory } from '../context/DirectoryContext'
+import DirectoryState from './DirectoryState'
+import { colors } from '../ui/theme'
 
 const icons: Record<string, string> = {
   Education: '🎓', Hospitals: '✚', 'Medical shops': '✦', Restaurants: '⌂',
@@ -41,7 +43,7 @@ function CategoryThumbnail({ name }: { name: string }) {
 
 export default function Categories({ navigation }: any) {
   const { t, category: categoryLabel } = useLanguage()
-  const { categories, businesses } = useDirectory()
+  const { categories, businesses, loading, error, retry } = useDirectory()
   const rootCategories = categories
     .filter(category => !category.parentId)
     .sort((first, second) => categoryPriority.indexOf(first.name) - categoryPriority.indexOf(second.name))
@@ -51,6 +53,7 @@ export default function Categories({ navigation }: any) {
       <MobileHeader navigation={navigation} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <DirectoryState loading={loading} error={error} onRetry={retry} />
         <View style={styles.list}>
           {rootCategories.map((category) => {
             const childIds = categories.filter((child) => child.parentId === category.id).map((child) => child.id)
@@ -84,7 +87,7 @@ export default function Categories({ navigation }: any) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#E9EBF9',
+    backgroundColor: colors.background,
   },
   header: {
     paddingTop: 28,
@@ -107,7 +110,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.8,
   },
   content: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingTop: 18,
     paddingBottom: 110,
   },
@@ -117,9 +120,9 @@ const styles = StyleSheet.create({
     padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F7F8FF',
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: '#DDE2F5',
+    borderColor: colors.border,
     borderRadius: 12,
   },
   categoryImageWrap: {

@@ -4,9 +4,11 @@ import { useAuth } from '../context/AuthContext';
 import BottomNav from './BottomNav';
 import { useLanguage } from '../context/LanguageContext';
 import { fetchJson } from '../services/api';
+import { useSubmittedListings } from '../context/SubmittedListingsContext';
 
 export default function Profile({ navigation }: any) {
   const { user, isLoggedIn, favorites, login, logout, isSuperAdmin } = useAuth();
+  const { listings } = useSubmittedListings();
   const { t } = useLanguage();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -22,8 +24,8 @@ export default function Profile({ navigation }: any) {
     const loadAdminData = async () => {
       try {
         const [summaryResponse, activityResponse] = await Promise.all([
-          fetchJson<{ data: { total_users?: number; super_admins?: number; total_businesses?: number; installed_devices?: number; total_reviews?: number; total_feedback?: number } }>('/api/admin/summary'),
-          fetchJson<{ data: Array<{ type: string; entity_id: string; label: string; created_at: string }> }>('/api/admin/recent-activity'),
+          fetchJson<{ data: { total_users?: number; super_admins?: number; total_businesses?: number; installed_devices?: number; total_reviews?: number; total_feedback?: number } }>('/api/admin/summary', undefined, user?.phone),
+          fetchJson<{ data: Array<{ type: string; entity_id: string; label: string; created_at: string }> }>('/api/admin/recent-activity', undefined, user?.phone),
         ])
         if (!canceled) {
           setAdminSummary({
@@ -157,6 +159,11 @@ export default function Profile({ navigation }: any) {
           ))}
         </View>
       </View>
+
+      {listings.length > 0 && <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('My submissions', 'నా సమర్పణలు')}</Text>
+        <View style={styles.list}>{listings.map((listing) => <View key={listing.id} style={styles.row}><Text style={styles.rowIcon}>＋</Text><View style={styles.submissionCopy}><Text style={styles.rowText}>{listing.name}</Text><Text style={styles.submissionStatus}>{listing.status}</Text></View></View>)}</View>
+      </View>}
 
       {isSuperAdmin && (
         <View style={styles.section}>
@@ -468,4 +475,6 @@ const styles = StyleSheet.create({
   dangerIcon: {
     color: '#D85A65',
   },
+  submissionCopy: { flex: 1 },
+  submissionStatus: { marginTop: 3, color: '#C95E49', fontSize: 11, fontWeight: '700' },
 });

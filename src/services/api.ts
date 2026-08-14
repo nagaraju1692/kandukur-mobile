@@ -3,51 +3,43 @@ export type WeatherReport = {
   condition: string
   humidity: string
   wind: string
-  rainSoon: boolean
-  rainMinutes: number | null
   updatedAt: string
+  hourly: Array<{ time: string; temp: number; code: number }>
+  daily: Array<{ date: string; max: number; min: number; code: number }>
 }
 
 export type GoldRate = {
-  pricePerGram: number
-  pricePerSavaram: number
-  pricePerGram22K: number
   pricePerSavaram22K: number
+  pricePerSavaram: number
   updatedAt: string
 }
 
 const weatherConditions: Record<number, string> = {
   0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast', 45: 'Foggy', 48: 'Rime fog',
   51: 'Light drizzle', 53: 'Drizzle', 55: 'Heavy drizzle', 61: 'Light rain', 63: 'Rain', 65: 'Heavy rain',
-  71: 'Light snow', 73: 'Snow', 75: 'Heavy snow', 80: 'Rain showers', 81: 'Rain showers', 82: 'Heavy rain showers',
-  95: 'Thunderstorm', 96: 'Thunderstorm with hail', 99: 'Thunderstorm with hail',
+  80: 'Rain showers', 81: 'Rain showers', 82: 'Heavy rain showers', 95: 'Thunderstorm', 96: 'Thunderstorm with hail', 99: 'Thunderstorm with hail',
 }
 
 export async function fetchWeather(): Promise<WeatherReport> {
   const params = new URLSearchParams({
     latitude: '15.2154', longitude: '79.9072',
     current: 'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m',
-    minutely_15: 'precipitation,weather_code', forecast_minutely_15: '2',
+    hourly: 'temperature_2m,weather_code',
+    daily: 'temperature_2m_max,temperature_2m_min,weather_code',
+    forecast_days: '7',
     temperature_unit: 'celsius', wind_speed_unit: 'kmh', timezone: 'Asia/Kolkata',
   })
   const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`)
   if (!response.ok) throw new Error(`Weather request failed: ${response.status}`)
   const data = await response.json()
-  const current = data.current
-  const rainCodes = new Set([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99])
-  const rainIndex = data.minutely_15?.time?.findIndex((time: string, index: number) => {
-    const minutesFromNow = (new Date(time).getTime() - Date.now()) / 60000
-    return minutesFromNow >= 0 && minutesFromNow <= 15 && (data.minutely_15.precipitation[index] > 0 || rainCodes.has(data.minutely_15.weather_code[index]))
-  }) ?? -1
-  const rainMinutes = rainIndex >= 0 ? Math.max(1, Math.round((new Date(data.minutely_15.time[rainIndex]).getTime() - Date.now()) / 60000)) : null
   return {
-    temp: `${Math.round(current.temperature_2m)}°C`,
-    condition: weatherConditions[current.weather_code] || 'Current conditions',
-    humidity: `${Math.round(current.relative_humidity_2m)}% humidity`,
-    wind: `${Math.round(current.wind_speed_10m)} km/h wind`,
-    rainSoon: rainIndex >= 0,
-    rainMinutes,
-    updatedAt: current.time,
+    temp: `${Math.round(data.current.temperature_2m)}°C`,
+    condition: weatherConditions[data.current.weather_code] || 'Current conditions',
+    humidity: `${Math.round(data.current.relative_humidity_2m)}% humidity`,
+    wind: `${Math.round(data.current.wind_speed_10m)} km/h wind`,
+    updatedAt: data.current.time,
+    hourly: (data.hourly?.time || []).slice(0, 12).map((time: string, index: number) => ({ time, temp: Math.round(data.hourly.temperature_2m[index]), code: data.hourly.weather_code[index] })),
+    daily: (data.daily?.time || []).map((date: string, index: number) => ({ date, max: Math.round(data.daily.temperature_2m_max[index]), min: Math.round(data.daily.temperature_2m_min[index]), code: data.daily.weather_code[index] })),
   }
 }
 
@@ -55,13 +47,11 @@ export async function fetchGoldRate(): Promise<GoldRate> {
   const response = await fetch('https://api.gold-api.com/price/XAU/INR')
   if (!response.ok) throw new Error(`Gold rate request failed: ${response.status}`)
   const data = await response.json()
-  const pricePerGram = Math.round(data.price / 31.1034768)
-  const pricePerGram22K = Math.round(pricePerGram * 22 / 24)
+  const pricePerGram24K = Math.round(data.price / 31.1034768)
+  const pricePerGram22K = Math.round(pricePerGram24K * 22 / 24)
   return {
-    pricePerGram,
-    pricePerSavaram: pricePerGram * 8,
-    pricePerGram22K,
     pricePerSavaram22K: pricePerGram22K * 8,
+    pricePerSavaram: pricePerGram24K * 8,
     updatedAt: data.updatedAt,
   }
 }
@@ -121,9 +111,11 @@ if (!apiBaseUrl) {
   console.warn('EXPO_PUBLIC_API_URL is not configured. Directory data cannot be loaded.')
 }
 
-export async function fetchJson<T>(path: string, options?: RequestInit): Promise<T> {
+export async function fetchJson<T>(path: string, options?: RequestInit, userPhone?: string | null): Promise<T> {
   if (!apiBaseUrl) throw new Error('EXPO_PUBLIC_API_URL is not configured')
-  const response = await fetch(`${apiBaseUrl.replace(/\/$/, '')}${path}`, options)
+  const headers = new Headers(options?.headers)
+  if (userPhone) headers.set('x-user-phone', userPhone)
+  const response = await fetch(`${apiBaseUrl.replace(/\/$/, '')}${path}`, { ...options, headers })
   if (!response.ok) throw new Error(`API request failed: ${response.status}`)
   return response.json() as Promise<T>
 }

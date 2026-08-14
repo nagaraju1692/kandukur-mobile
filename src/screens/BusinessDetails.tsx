@@ -8,21 +8,27 @@ import { useLanguage } from '../context/LanguageContext'
 import { useReviews } from '../context/ReviewContext'
 import { useNearby } from '../context/NearbyContext'
 import { useDirectory } from '../context/DirectoryContext'
+import DirectoryState from './DirectoryState'
+import { colors } from '../ui/theme'
 import { buildGoogleMapsDirectionsUrl } from '../services/api'
 
 export default function BusinessDetails({ route, navigation }: any) {
   const { id } = route.params || {}
-  const { businesses } = useDirectory()
+  const { businesses, loading, error, retry } = useDirectory()
   const business = businesses.find(item => item.id === id)
   const { favorites, toggleFavorite, isLoggedIn } = useAuth()
   const { t, category: categoryLabel } = useLanguage()
-  const { getReviewStats, getReviews, submitReview } = useReviews()
+  const { getReviewStats, getReviews, submitReview, loading: reviewsLoading, error: reviewsError, retry: retryReviews } = useReviews()
   const { distances, ready, ensureAddresses, location } = useNearby()
   const [showReviewForm, setShowReviewForm] = useState(false)
   const [selectedRating, setSelectedRating] = useState(0)
   const [comment, setComment] = useState('')
 
-  if (!business) return <View style={styles.empty}><Text>Listing not found.</Text></View>
+  React.useEffect(() => {
+    if (business && ready) ensureAddresses([{ id: business.id, address: business.address, latitude: business.latitude, longitude: business.longitude }])
+  }, [business, ready, ensureAddresses])
+
+  if (!business) return <View style={styles.empty}><DirectoryState loading={loading} error={error || 'Listing not found.'} onRetry={retry} /></View>
 
   const openMap = () => Linking.openURL(buildGoogleMapsDirectionsUrl({ latitude: business.latitude, longitude: business.longitude }, location ?? undefined))
   const share = () => Share.share({ title: business.name, message: `${business.name} - ${business.address}` })
@@ -36,11 +42,8 @@ export default function BusinessDetails({ route, navigation }: any) {
     }
     Linking.openURL(`https://wa.me/${phone}`)
   }
-  const reportListing = () => Alert.alert(t('Report Listing', 'లిస్టింగ్‌ను నివేదించండి'), t('This listing has been reported for review.', 'ఈ లిస్టింగ్‌కు సమీక్ష కోసం నివేదించబడింది.'))
-
   const isFavorite = favorites.includes(business.id)
   const reviewStats = getReviewStats(business.id)
-  React.useEffect(() => { if (ready) ensureAddresses([{ id: business.id, address: business.address, latitude: business.latitude, longitude: business.longitude }]) }, [business.id, business.address, business.latitude, business.longitude, ready])
   const businessReviews = getReviews(business.id)
   const imageSource = getBusinessImage(business.image, business.categoryName)
 
@@ -61,12 +64,10 @@ export default function BusinessDetails({ route, navigation }: any) {
           <Text style={styles.distance}>{(distances[business.id] ?? distances[business.address]) !== undefined ? `${((distances[business.id] ?? distances[business.address]) as number).toFixed(1)} km from your location` : 'Calculating distance…'}</Text>
           <Text style={styles.description}>{business.description}</Text>
           <View style={styles.actions}><Pressable style={styles.secondary} onPress={call}><Text style={styles.actionIcon}>📞</Text><Text style={styles.secondaryText}>{t('Call', 'కాల్')}</Text></Pressable><Pressable style={styles.primary} onPress={openMap}><Text style={styles.actionIcon}>📍</Text><Text style={styles.primaryText}>{t('Directions', 'దిశలు')}</Text></Pressable><Pressable style={styles.secondary} onPress={share}><Text style={styles.actionIcon}>🔗</Text><Text style={styles.secondaryText}>{t('Share', 'షేర్')}</Text></Pressable><Pressable style={styles.secondary} onPress={openWhatsApp}><Text style={styles.actionIcon}>💬</Text><Text style={styles.secondaryText}>{t('WhatsApp', 'వాట్స్అప్')}</Text></Pressable><Pressable style={styles.secondary} onPress={() => isLoggedIn ? toggleFavorite(business.id) : navigation.navigate('Profile')}><Text style={styles.actionIcon}>{isFavorite ? '♥' : '♡'}</Text><Text style={styles.secondaryText}>{isFavorite ? t('Saved', 'సేవ్ చేశారు') : t('Save', 'సేవ్')}</Text></Pressable></View>
-          <View style={styles.info}><Text style={styles.infoLabel}>{t('ABOUT THIS PLACE', 'ఈ ప్రదేశం గురించి')}</Text><Text style={styles.infoText}>{business.description || t('Discover everything this business has to offer.', 'ఈ వ్యాపారం అందించే సేవలను తెలుసుకోండి.')}</Text><Text style={styles.infoLabel}>{t('CONTACT INFORMATION', 'సంప్రదింపు సమాచారం')}</Text><Text style={styles.infoText}>📞 {business.phone || t('Not available', 'అందుబాటులో లేదు')}</Text><Text style={styles.infoText}>📍 {business.address}</Text>{business.website && <Pressable onPress={openWebsite}><Text style={styles.websiteLink}>🌐 {business.website}</Text></Pressable>}<Pressable onPress={reportListing}><Text style={styles.reportLink}>{t('Report listing', 'లిస్టింగ్‌ను నివేదించండి')}</Text></Pressable></View>
-          <View style={styles.sectionCard}><Text style={styles.infoLabel}>{t('POPULAR SERVICES', 'ప్రసిద్ధ సేవలు')}</Text><View style={styles.serviceRow}>{['General Services', 'Consultation', 'Support', 'Premium', 'Extended Hours'].map((service) => <Text key={service} style={styles.serviceTag}>{t(service, service)}</Text>)}</View></View>
-          <View style={styles.sectionCard}><Text style={styles.infoLabel}>{t('HOURS', 'పని వేళలు')}</Text><Text style={styles.infoText}>Monday - Friday: 9:00 AM - 6:00 PM</Text><Text style={styles.infoText}>Saturday: 9:00 AM - 2:00 PM</Text><Text style={styles.infoText}>Sunday: Closed</Text></View>
+          <View style={styles.info}><Text style={styles.infoLabel}>{t('ABOUT THIS PLACE', 'ఈ ప్రదేశం గురించి')}</Text><Text style={styles.infoText}>{business.description || t('Discover everything this business has to offer.', 'ఈ వ్యాపారం అందించే సేవలను తెలుసుకోండి.')}</Text><Text style={styles.infoLabel}>{t('CONTACT INFORMATION', 'సంప్రదింపు సమాచారం')}</Text><Text style={styles.infoText}>📞 {business.phone || t('Not available', 'అందుబాటులో లేదు')}</Text><Text style={styles.infoText}>📍 {business.address}</Text>{business.website && <Pressable onPress={openWebsite}><Text style={styles.websiteLink}>🌐 {business.website}</Text></Pressable>}</View>
           <View style={styles.sectionCard}><Text style={styles.infoLabel}>{t(`PHOTOS (${(business.gallery || []).length || 4})`, `ఫోటోలు (${(business.gallery || []).length || 4})`)}</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gallery}>{(business.gallery || []).slice(0, 4).map((image: any, index: number) => <Image key={`${business.id}-${index}`} source={getBusinessImage(image, business.categoryName)} style={styles.galleryImage} resizeMode="cover" />)}</ScrollView></View>
           <Pressable style={styles.reviewButton} onPress={() => isLoggedIn ? setShowReviewForm(true) : navigation.navigate('Profile')}><Text style={styles.reviewButtonText}>{t('Write a Review', 'సమీక్ష రాయండి')}</Text></Pressable>
-          <View style={styles.sectionCard}><Text style={styles.infoLabel}>{t('REVIEWS', 'సమీక్షలు')} ({businessReviews.length})</Text>{businessReviews.length === 0 ? <Text style={styles.noReviews}>{t('No reviews yet.', 'ఇంకా సమీక్షలు లేవు.')}</Text> : businessReviews.slice().reverse().map((review) => <View key={review.id} style={styles.reviewItem}><Text style={styles.reviewRating}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</Text>{review.comment ? <Text style={styles.reviewComment}>{review.comment}</Text> : null}<Text style={styles.reviewDate}>{new Date(review.createdAt).toLocaleDateString()}</Text></View>)}</View>
+          <View style={styles.sectionCard}><Text style={styles.infoLabel}>{t('REVIEWS', 'సమీక్షలు')} ({businessReviews.length})</Text>{reviewsLoading ? <Text style={styles.noReviews}>{t('Loading reviews…', 'సమీక్షలు లోడ్ అవుతున్నాయి…')}</Text> : reviewsError ? <><Text style={styles.noReviews}>{t('Reviews could not be loaded.', 'సమీక్షలను లోడ్ చేయలేకపోయాము.')}</Text><Pressable onPress={retryReviews}><Text style={styles.websiteLink}>{t('Retry', 'మళ్లీ ప్రయత్నించండి')}</Text></Pressable></> : businessReviews.length === 0 ? <Text style={styles.noReviews}>{t('No reviews yet.', 'ఇంకా సమీక్షలు లేవు.')}</Text> : businessReviews.slice().reverse().map((review) => <View key={review.id} style={styles.reviewItem}><Text style={styles.reviewRating}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</Text>{review.comment ? <Text style={styles.reviewComment}>{review.comment}</Text> : null}<Text style={styles.reviewDate}>{new Date(review.createdAt).toLocaleDateString()}</Text></View>)}</View>
         </View>
       </ScrollView>
       <Modal visible={showReviewForm} transparent animationType="fade" onRequestClose={() => setShowReviewForm(false)}>
@@ -86,7 +87,7 @@ export default function BusinessDetails({ route, navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#EAEAF9' },
+  screen: { flex: 1, backgroundColor: colors.background },
   ratingSummary: { marginTop: 8, color: '#D89B00', fontSize: 13, fontWeight: '800' },
   distance: { marginTop: 7, color: '#4D8052', fontSize: 12, fontWeight: '700' },
   noReviews: { marginTop: 10, color: '#77716D', fontSize: 13 },
@@ -111,5 +112,5 @@ const styles = StyleSheet.create({
   hero: { height: 230, position: 'relative', backgroundColor: '#4A4AD5' }, heroImage: { width: '100%', height: '100%' }, heroShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(25, 25, 70, 0.25)' },
   backButton: { position: 'absolute', top: 18, left: 16, width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.92)' }, backButtonText: { color: '#25263A', fontSize: 30, lineHeight: 33, textAlign: 'center' },
   favoriteButton: { position: 'absolute', top: 18, right: 16, width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.9)' }, favoriteButtonText: { color: '#E34E5B', fontSize: 23 },
-  body: { padding: 20, backgroundColor: '#EAEAF9' }, category: { color: '#5B55D9', fontSize: 11, fontWeight: '800', letterSpacing: 1 }, title: { marginTop: 7, color: '#2F2F41', fontSize: 25, fontWeight: '800', lineHeight: 31 }, description: { marginTop: 14, color: '#686879', fontSize: 14, lineHeight: 21 }, info: { marginTop: 16, padding: 16, borderRadius: 10, borderWidth: 1, borderColor: '#DDE2F5', backgroundColor: '#F8F9FF' }, infoLabel: { marginTop: 8, color: '#858596', fontSize: 10, fontWeight: '800', letterSpacing: 1 }, infoText: { marginTop: 5, color: '#3F3F50', fontSize: 13, lineHeight: 19 }, actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 22 }, primary: { flexBasis: '46%', flexGrow: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 7, backgroundColor: '#514BD5' }, primaryText: { color: '#FFF', fontSize: 13, fontWeight: '800' }, secondary: { flexBasis: '46%', flexGrow: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 7, borderWidth: 1, borderColor: '#DCDDEA', backgroundColor: '#F8F9FF' }, secondaryText: { color: '#514BD5', fontSize: 13, fontWeight: '800' }, actionIcon: { fontSize: 14, marginBottom: 2 }, websiteLink: { marginTop: 6, color: '#3D71D9', fontSize: 13 }, reportLink: { marginTop: 8, color: '#B55A4E', fontSize: 12, fontWeight: '700' }, sectionCard: { marginTop: 16, padding: 16, borderRadius: 10, borderWidth: 1, borderColor: '#DDE2F5', backgroundColor: '#F8F9FF' }, serviceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }, serviceTag: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 14, color: '#514BD5', backgroundColor: '#E9E9FF', fontSize: 11, fontWeight: '700' }, gallery: { gap: 10, marginTop: 10 }, galleryImage: { width: 112, height: 84, borderRadius: 8 }, reviewButton: { marginTop: 20, marginBottom: 20, alignItems: 'center', paddingVertical: 13, borderRadius: 8, backgroundColor: '#514BD5' }, reviewButtonText: { color: '#FFF', fontSize: 14, fontWeight: '800' },
+  body: { padding: 20, backgroundColor: colors.background }, category: { color: '#5B55D9', fontSize: 11, fontWeight: '800', letterSpacing: 1 }, title: { marginTop: 7, color: '#2F2F41', fontSize: 25, fontWeight: '800', lineHeight: 31 }, description: { marginTop: 14, color: '#686879', fontSize: 14, lineHeight: 21 }, info: { marginTop: 16, padding: 16, borderRadius: 10, borderWidth: 1, borderColor: '#DDE2F5', backgroundColor: '#F8F9FF' }, infoLabel: { marginTop: 8, color: '#858596', fontSize: 10, fontWeight: '800', letterSpacing: 1 }, infoText: { marginTop: 5, color: '#3F3F50', fontSize: 13, lineHeight: 19 }, actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 22 }, primary: { flexBasis: '46%', flexGrow: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 7, backgroundColor: '#514BD5' }, primaryText: { color: '#FFF', fontSize: 13, fontWeight: '800' }, secondary: { flexBasis: '46%', flexGrow: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 7, borderWidth: 1, borderColor: '#DCDDEA', backgroundColor: '#F8F9FF' }, secondaryText: { color: '#514BD5', fontSize: 13, fontWeight: '800' }, actionIcon: { fontSize: 14, marginBottom: 2 }, websiteLink: { marginTop: 6, color: '#3D71D9', fontSize: 13 }, sectionCard: { marginTop: 16, padding: 16, borderRadius: 10, borderWidth: 1, borderColor: '#DDE2F5', backgroundColor: '#F8F9FF' }, serviceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }, serviceTag: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 14, color: '#514BD5', backgroundColor: '#E9E9FF', fontSize: 11, fontWeight: '700' }, gallery: { gap: 10, marginTop: 10 }, galleryImage: { width: 112, height: 84, borderRadius: 8 }, reviewButton: { marginTop: 20, marginBottom: 20, alignItems: 'center', paddingVertical: 13, borderRadius: 8, backgroundColor: '#514BD5' }, reviewButtonText: { color: '#FFF', fontSize: 14, fontWeight: '800' },
 })
