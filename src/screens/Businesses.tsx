@@ -30,6 +30,9 @@ export default function Businesses({ navigation, route }: any) {
   const { businesses, categories } = useDirectory()
   const [showPropertyForm, setShowPropertyForm] = useState(false)
   const [propertyForm, setPropertyForm] = useState({ name: '', phone: '', type: 'Direct owner', gadhulu: '', face: '', location: '' })
+  const [sortMode, setSortMode] = useState<'nearest' | 'rating' | 'newest'>('nearest')
+  const [minRating, setMinRating] = useState(0)
+  const [distanceFilter, setDistanceFilter] = useState(20)
   const categoryId = route.params?.categoryId || null
   const category = categories.find(item => item.id === categoryId)
   const subcategoryIds = categoryId ? categories.filter(item => item.parentId === categoryId).map(item => item.id) : []
@@ -37,7 +40,27 @@ export default function Businesses({ navigation, route }: any) {
   const selectedBusinesses: any[] = allBusinesses.filter(
     business => !categoryId || business.categoryId === categoryId || subcategoryIds.includes(business.categoryId),
   )
-  const orderedBusinesses = sortNearest(selectedBusinesses)
+  const filteredBusinesses = selectedBusinesses.filter((business) => {
+    const reviewStats = getReviewStats(business.id)
+    const distance = distances[business.id] ?? distances[business.address]
+    const withinDistance = distance === undefined || distance <= distanceFilter
+    const hasMinRating = reviewStats.rating >= minRating
+    return withinDistance && hasMinRating
+  })
+  const orderedBusinesses = (() => {
+    const cloned = filteredBusinesses.slice()
+    if (sortMode === 'rating') {
+      return cloned.sort((first, second) => {
+        const firstRating = getReviewStats(first.id).rating
+        const secondRating = getReviewStats(second.id).rating
+        return secondRating - firstRating
+      })
+    }
+    if (sortMode === 'newest') {
+      return cloned.sort((first, second) => (second.id > first.id ? 1 : -1))
+    }
+    return sortNearest(cloned)
+  })()
   React.useEffect(() => { if (ready) ensureAddresses(selectedBusinesses.map((business) => ({ id: business.id, address: business.address, latitude: business.latitude, longitude: business.longitude }))) }, [selectedBusinesses.length, categoryId, ready])
 
   const childCategories = categories.filter(item => item.parentId === categoryId)
@@ -89,6 +112,23 @@ export default function Businesses({ navigation, route }: any) {
       </View>
 
       <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.filterBar}>
+          <View style={styles.filterChipRow}>
+            {(['nearest', 'rating', 'newest'] as const).map((mode) => (
+              <Pressable key={mode} style={[styles.filterChip, sortMode === mode && styles.filterChipActive]} onPress={() => setSortMode(mode)}>
+                <Text style={[styles.filterChipText, sortMode === mode && styles.filterChipTextActive]}>{mode === 'nearest' ? t('Nearest', 'సమీపం') : mode === 'rating' ? t('Rating', 'రేటింగ్') : t('Newest', 'తాజా')}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={styles.sliderRow}>
+            <Text style={styles.sliderLabel}>{t('Min rating', 'కనిష్ఠ రేటింగ్')}: {minRating.toFixed(1)}</Text>
+            <TextInput value={String(minRating)} keyboardType="numeric" onChangeText={(value) => setMinRating(Math.min(5, Math.max(0, Number(value || 0))))} style={styles.sliderInput} />
+          </View>
+          <View style={styles.sliderRow}>
+            <Text style={styles.sliderLabel}>{t('Distance limit', 'దూర పరిమితి')}: {distanceFilter} km</Text>
+            <TextInput value={String(distanceFilter)} keyboardType="numeric" onChangeText={(value) => setDistanceFilter(Math.min(100, Math.max(1, Number(value || 1))))} style={styles.sliderInput} />
+          </View>
+        </View>
         {orderedBusinesses.map((business) => (
           <Pressable
             key={business.id}
@@ -216,6 +256,15 @@ const styles = StyleSheet.create({
   stars: { color: '#D89B00', fontSize: 11 },
   reviews: { color: '#5E5A5A', fontSize: 11 },
   typePill: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 9, color: '#C95E49', backgroundColor: '#FFF0E9', fontSize: 9, fontWeight: '800' },
+  filterBar: { marginBottom: 18, padding: 10, borderRadius: 12, backgroundColor: '#FFFDFB', borderWidth: 1, borderColor: '#E5E5F2' },
+  filterChipRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  filterChip: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: '#F0F2FF', borderWidth: 1, borderColor: '#D9DDF8' },
+  filterChipActive: { backgroundColor: '#514BD5', borderColor: '#514BD5' },
+  filterChipText: { color: '#2F2F41', fontSize: 11, fontWeight: '800' },
+  filterChipTextActive: { color: '#FFF' },
+  sliderRow: { marginTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sliderLabel: { color: '#4F4F5F', fontSize: 12, fontWeight: '700' },
+  sliderInput: { width: 80, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: '#DCE0F2', backgroundColor: '#F7F8FF', color: '#2D2F43', textAlign: 'center' },
   cardPhone: { marginTop: 5, color: '#636B82', fontSize: 11 },
   openStatus: { marginTop: 4, color: '#4D8052', fontSize: 11, fontWeight: '800' },
   soldOutStatus: { color: '#C4515B' },

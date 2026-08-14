@@ -128,4 +128,17 @@ export async function fetchJson<T>(path: string, options?: RequestInit): Promise
   return response.json() as Promise<T>
 }
 
+export async function recordAppUsage(deviceId: string, userPhone?: string | null) {
+  if (!apiBaseUrl) return
+  try {
+    await fetchJson<{ data: { id: string; deviceId: string; visitedAt: string } }>('/api/usage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId, userPhone: userPhone || null }),
+    })
+  } catch {
+    // Ignore analytics failures so app does not break for anonymous usage tracking.
+  }
+}
+
 export default fetchJson

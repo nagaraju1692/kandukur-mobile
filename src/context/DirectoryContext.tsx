@@ -25,6 +25,8 @@ export type Announcement = {
   description: string
   type: string
   image: string
+  startDate?: string | null
+  endDate?: string | null
 }
 
 type DirectoryContextValue = {

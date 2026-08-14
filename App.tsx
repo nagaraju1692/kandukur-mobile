@@ -1,6 +1,7 @@
 import 'react-native-gesture-handler';
 import 'react-native-reanimated';
-import React from 'react';
+import React, { useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -24,12 +25,36 @@ import { SubmittedListingsProvider } from './src/context/SubmittedListingsContex
 import SubmitBusiness from './src/screens/SubmitBusiness';
 import Feedback from './src/screens/Feedback';
 import { DirectoryProvider } from './src/context/DirectoryContext';
+import { recordAppUsage } from './src/services/api';
 
 enableScreens();
 
 const Stack = createNativeStackNavigator();
 
-export default function App() {
+function AppRoot() {
+  useEffect(() => {
+    let cancelled = false
+
+    const registerUsage = async () => {
+      try {
+        let deviceId = await AsyncStorage.getItem('mana-kandukur-device-id')
+        if (!deviceId) {
+          deviceId = `device-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+          await AsyncStorage.setItem('mana-kandukur-device-id', deviceId)
+        }
+
+        if (!cancelled) {
+          await recordAppUsage(deviceId)
+        }
+      } catch {
+        // Ignore analytics errors to keep app startup non-blocking.
+      }
+    }
+
+    registerUsage()
+    return () => { cancelled = true }
+  }, [])
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -64,4 +89,8 @@ export default function App() {
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
+}
+
+export default function App() {
+  return <AppRoot />
 }

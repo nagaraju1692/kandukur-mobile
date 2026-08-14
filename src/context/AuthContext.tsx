@@ -5,12 +5,15 @@ import { fetchJson } from '../services/api';
 export type UserProfile = {
   name: string;
   phone: string;
+  role?: 'user' | 'super_admin';
+  isSuperAdmin?: boolean;
 };
 
 type AuthContextValue = {
   user: UserProfile | null;
   favorites: string[];
   isLoggedIn: boolean;
+  isSuperAdmin: boolean;
   login: (profile: UserProfile) => Promise<UserProfile>;
   logout: () => Promise<void>;
   toggleFavorite: (businessId: string) => Promise<void>;
@@ -96,6 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     favorites,
     isLoggedIn: !!user,
+    isSuperAdmin: Boolean(user?.isSuperAdmin || user?.role === 'super_admin'),
     login,
     logout,
     toggleFavorite,

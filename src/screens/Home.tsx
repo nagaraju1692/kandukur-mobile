@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native'
 import BottomNav from './BottomNav'
 import { getBusinessImage } from '../utils/categoryImages'
@@ -56,6 +56,9 @@ export default function Home({ navigation }: any) {
   const announcementRailRef = useRef<ScrollView>(null)
   const announcementOffsetRef = useRef(0)
   const announcementContentWidthRef = useRef(0)
+  const announcementLoopThresholdRef = useRef(0)
+  const announcementTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const announcementPausedRef = useRef(false)
   const { width } = useWindowDimensions()
   const isPhone = width < 600
   const horizontalPadding = isPhone ? 18 : 24
@@ -78,16 +81,45 @@ export default function Home({ navigation }: any) {
 
   useEffect(() => { setPopularBusinesses(localPopularBusinesses(businesses)) }, [businesses])
 
+  const activeAnnouncements = useMemo(() => {
+    const now = Date.now()
+    return updates.filter((announcement) => {
+      const startDate = announcement.startDate ? new Date(announcement.startDate).getTime() : null
+      const endDate = announcement.endDate ? new Date(announcement.endDate).getTime() : null
+      return (startDate === null || startDate <= now) && (endDate === null || endDate >= now)
+    })
+  }, [updates])
+
+  const announcementItems = activeAnnouncements.length > 1 ? [...activeAnnouncements, ...activeAnnouncements] : activeAnnouncements
+
   useEffect(() => {
-    const timer = setInterval(() => {
-      const rail = announcementRailRef.current
-      if (!rail) return
-      const step = 320
-      const nextX = announcementOffsetRef.current + step >= announcementContentWidthRef.current ? 0 : announcementOffsetRef.current + step
-      rail.scrollTo({ x: nextX, y: 0, animated: true })
-    }, 5000)
-    return () => clearInterval(timer)
-  }, [])
+    const startAnnouncementLoop = () => {
+      if (announcementTimerRef.current) clearInterval(announcementTimerRef.current)
+      announcementTimerRef.current = setInterval(() => {
+        if (announcementPausedRef.current) return
+        const rail = announcementRailRef.current
+        if (!rail) return
+        const loopThreshold = Math.max(0, announcementLoopThresholdRef.current)
+        const step = 130
+        const nextX = announcementOffsetRef.current + step
+
+        if (loopThreshold > 0 && nextX >= loopThreshold) {
+          const wrappedX = nextX - loopThreshold
+          rail.scrollTo({ x: wrappedX, y: 0, animated: false })
+          announcementOffsetRef.current = wrappedX
+          return
+        }
+
+        rail.scrollTo({ x: nextX, y: 0, animated: true })
+        announcementOffsetRef.current = nextX
+      }, 6500)
+    }
+
+    startAnnouncementLoop()
+    return () => {
+      if (announcementTimerRef.current) clearInterval(announcementTimerRef.current)
+    }
+  }, [width, updates.length])
 
   useEffect(() => { if (ready) ensureAddresses(popularBusinesses.map((business) => ({ id: business.id, address: business.address, latitude: business.latitude, longitude: business.longitude }))) }, [popularBusinesses.length, ready, ensureAddresses])
 
@@ -127,32 +159,40 @@ export default function Home({ navigation }: any) {
           </Pressable>
         </View>
 
-        <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>{t('Latest in Kandukur', 'కందుకూరులో తాజా సమాచారం')}</Text><Text style={styles.updateCount}>{updates.length} {t('updates', 'అప్‌డేట్లు')}</Text></View>
-        <View style={styles.announcementWrap}>
-          <Pressable style={[styles.announcementArrow, styles.announcementArrowLeft]} onPress={() => announcementRailRef.current?.scrollTo({ x: 0, animated: true })}><Text style={styles.announcementArrowText}>‹</Text></Pressable>
-          <ScrollView
-            ref={announcementRailRef}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.updateRail}
-            onScroll={({ nativeEvent }) => {
-              announcementOffsetRef.current = nativeEvent.contentOffset.x
-            }}
-            onContentSizeChange={(contentWidth) => {
-              announcementContentWidthRef.current = contentWidth
-            }}
-            scrollEventThrottle={16}
-          >
-            {updates.map((update) => (
-              <Pressable key={update.title} style={styles.updateCard} onPress={() => setSelectedUpdate(update)}>
-                <Image source={{ uri: update.image }} style={styles.updateImage} resizeMode="cover" />
-                <View style={styles.updateShade} />
-                <View style={styles.updateCopy}><Text style={styles.updateTitle}>{update.title}</Text><Text style={styles.updateDetail}>{update.detail}</Text><Text style={styles.updateLocation}>Kandukur, Andhra Pradesh</Text></View>
-              </Pressable>
-            ))}
-          </ScrollView>
-          <Pressable style={[styles.announcementArrow, styles.announcementArrowRight]} onPress={() => announcementRailRef.current?.scrollToEnd({ animated: true })}><Text style={styles.announcementArrowText}>›</Text></Pressable>
-        </View>
+        {activeAnnouncements.length > 0 && (
+          <>
+            <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>{t('Latest in Kandukur', 'కందుకూరులో తాజా సమాచారం')}</Text><Text style={styles.updateCount}>{activeAnnouncements.length} {t('updates', 'అప్‌డేట్లు')}</Text></View>
+            <View style={styles.announcementWrap}>
+              <Pressable style={[styles.announcementArrow, styles.announcementArrowLeft]} onPress={() => announcementRailRef.current?.scrollTo({ x: 0, animated: true })}><Text style={styles.announcementArrowText}>‹</Text></Pressable>
+              <ScrollView
+                ref={announcementRailRef}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.updateRail}
+                onTouchStart={() => { announcementPausedRef.current = true }}
+                onTouchEnd={() => { announcementPausedRef.current = false }}
+                onTouchCancel={() => { announcementPausedRef.current = false }}
+                onScroll={({ nativeEvent }) => {
+                  announcementOffsetRef.current = nativeEvent.contentOffset.x
+                }}
+                onContentSizeChange={(contentWidth) => {
+                  announcementContentWidthRef.current = contentWidth
+                  announcementLoopThresholdRef.current = contentWidth / 2
+                }}
+                scrollEventThrottle={16}
+              >
+                {announcementItems.map((update, index) => (
+                  <Pressable key={`${update.id}-${index}`} style={styles.updateCard} onPress={() => setSelectedUpdate(update)}>
+                    <Image source={{ uri: update.image }} style={styles.updateImage} resizeMode="cover" />
+                    <View style={styles.updateShade} />
+                    <View style={styles.updateCopy}><Text style={styles.updateTitle}>{update.title}</Text><Text style={styles.updateDetail}>{update.detail}</Text><Text style={styles.updateLocation}>Kandukur, Andhra Pradesh</Text></View>
+                  </Pressable>
+                ))}
+              </ScrollView>
+              <Pressable style={[styles.announcementArrow, styles.announcementArrowRight]} onPress={() => announcementRailRef.current?.scrollToEnd({ animated: true })}><Text style={styles.announcementArrowText}>›</Text></Pressable>
+            </View>
+          </>
+        )}
 
         <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>{t('Explore Categories', 'వర్గాలను అన్వేషించండి')}</Text><Pressable onPress={() => navigation.navigate('Categories')}><Text style={styles.viewAll}>{t('View all', 'అన్నీ చూడండి')} →</Text></Pressable></View>
 
