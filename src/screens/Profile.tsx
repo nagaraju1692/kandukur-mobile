@@ -9,6 +9,7 @@ export default function Profile({ navigation }: any) {
   const { t } = useLanguage();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [loginErrors, setLoginErrors] = useState<{ name?: string; phone?: string }>({});
 
   const activityRows = useMemo(() => [
     { id: 'reviews', icon: '★', label: t('My reviews', 'నా సమీక్షలు'), count: '0' },
@@ -20,7 +21,11 @@ export default function Profile({ navigation }: any) {
     const trimmedName = name.trim();
     const trimmedPhone = phone.trim();
 
-    if (!trimmedName || !trimmedPhone) return;
+    const nextErrors: { name?: string; phone?: string } = {};
+    if (!/^[A-Za-z][A-Za-z .'-]{1,49}$/.test(trimmedName)) nextErrors.name = t('Enter your name.', 'మీ పేరు నమోదు చేయండి.');
+    if (!/^[6-9]\d{9}$/.test(trimmedPhone.replace(/\D/g, ''))) nextErrors.phone = t('Enter a valid 10-digit mobile number.', 'చెల్లుబాటు అయ్యే 10 అంకెల మొబైల్ నంబర్ నమోదు చేయండి.');
+    setLoginErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
 
     await login({ name: trimmedName, phone: trimmedPhone });
     setName('');
@@ -44,22 +49,24 @@ export default function Profile({ navigation }: any) {
           <Text style={styles.guestTitle}>Mana Kandukur</Text>
           <Text style={styles.guestCopy}>{t('Discover everything local', 'స్థానిక సమాచారం అంతా తెలుసుకోండి')}</Text>
 
-          <Text style={styles.fieldLabel}>{t('Your name', 'మీ పేరు')}</Text>
+          <Text style={styles.fieldLabel}>{t('Your name', 'మీ పేరు')} *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, loginErrors.name && styles.inputError]}
             placeholder={t('Your name', 'మీ పేరు')}
             value={name}
-            onChangeText={setName}
+            onChangeText={(value) => { setName(value); if (loginErrors.name) setLoginErrors((current) => ({ ...current, name: undefined })); }}
             autoCapitalize="words"
           />
-          <Text style={styles.fieldLabel}>{t('Mobile number', 'మొబైల్ నంబర్')}</Text>
+          {loginErrors.name && <Text style={styles.errorText}>{loginErrors.name}</Text>}
+          <Text style={styles.fieldLabel}>{t('Mobile number', 'మొబైల్ నంబర్')} *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, loginErrors.phone && styles.inputError]}
             placeholder={t('Mobile number', 'మొబైల్ నంబర్')}
             value={phone}
-            onChangeText={setPhone}
+            onChangeText={(value) => { setPhone(value); if (loginErrors.phone) setLoginErrors((current) => ({ ...current, phone: undefined })); }}
             keyboardType="phone-pad"
           />
+          {loginErrors.phone && <Text style={styles.errorText}>{loginErrors.phone}</Text>}
 
           <Pressable style={styles.primaryButton} onPress={handleLogin}>
             <Text style={styles.primaryButtonText}>{t('Continue', 'కొనసాగించండి')}</Text>
@@ -108,9 +115,9 @@ export default function Profile({ navigation }: any) {
         <Text style={styles.sectionTitle}>{t('More', 'మరిన్ని')}</Text>
         <View style={styles.list}>
           {[
-            { label: t('Submit a business', 'వ్యాపారాన్ని సమర్పించండి'), icon: '＋', action: () => navigation.navigate('Categories') },
+            { label: t('Submit a business', 'వ్యాపారాన్ని సమర్పించండి'), icon: '＋', action: () => navigation.navigate('SubmitBusiness') },
             { label: t('About Mana Kandukur', 'మనా కందుకూరు గురించి'), icon: 'i', action: () => navigation.navigate('Home') },
-            { label: t('Help & support', 'సహాయం మరియు మద్దతు'), icon: '?', action: () => navigation.navigate('Home') },
+            { label: t('Feedback & complaints', 'అభిప్రాయం మరియు ఫిర్యాదులు'), icon: '?', action: () => navigation.navigate('Feedback') },
             { label: t('Logout', 'లాగ్ అవుట్'), icon: '↪', action: handleLogout, danger: true },
           ].map((item) => (
             <Pressable
@@ -195,6 +202,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#2D2F3D',
   },
+  inputError: { borderColor: '#D65360', backgroundColor: '#FFF7F7' },
+  errorText: { marginTop: 4, color: '#C7414F', fontSize: 11, lineHeight: 15 },
   primaryButton: {
     marginTop: 18,
     paddingVertical: 12,

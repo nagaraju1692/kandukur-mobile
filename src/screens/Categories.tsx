@@ -11,7 +11,27 @@ const icons: Record<string, string> = {
   Lodges: '▣', 'Bus stand': '▤', 'Police station': '⌁', Temples: '◉',
   Banks: '₹', 'Movie Theaters': '▶', 'Shopping clothes': '◈', 'Retail marts': '▦',
   'Beauty clinics': '✧', 'RealEstate': '▣', 'Agricultural info': '🌾',
+  'Real Estate': '🏘️', Agriculture: '🌾', 'Food & Meat Markets': '🥬', 'Rental Transport': '🚚',
+  'Tourist Places': '🗺️', 'Rental Houses': '🏠', 'Construction Materials': '🧱', 'Government Offices': '🏛️',
+  'Cold Storages': '❄️', 'Manpower Services': '🛠️', 'Show Rooms': '🏬', 'Bike & Car Mechanics': '🔧',
+  'Plots for Sale': '📐', 'Property Agents': '🤝', 'Tobacco Boards': '🌿', 'Vegetable Markets': '🥕',
+  'Fish Markets': '🐟', 'Fruit Markets': '🍎', 'Mutton Shops': '🍖', 'Chicken Shops': '🍗', 'Sweet Shops': '🍬',
+  'Cars for Rent': '🚗', 'Autos for Rent': '🛺', 'Lorries for Rent': '🚛', 'Tractors for Rent': '🚜', 'JCBs for Rent': '🏗️',
+  'Rallapadu Reservoir': '🌊', Malakonda: '⛰️', Swagameswaram: '🛕', Sand: '⛱️', Kankara: '🪨', Cement: '🏗️', Bricks: '🧱',
+  'MRO Office': '🏢', 'Municipality Office': '🏛️', 'Registration Office': '📄', Mestri: '👷',
+  'Training Institutions': '🎓', 'Computer Training': '💻', 'Spoken English': '🗣️', 'Driving Schools': '🚗', 'Skill Development': '🧰',
+  Plumber: '🔧', Electricians: '⚡', 'Tiles Work': '◼️', 'False Ceiling': '🏠', 'Bore Points': '💧', 'Bike Show Rooms': '🏍️',
+  'Car Show Rooms': '🚘', 'Vehicle Wash': '🚿',
 }
+
+const categoryPriority = [
+  'Education', 'Hospitals', 'Medical shops', 'Restaurants', 'Real Estate', 'Agriculture',
+  'Food & Meat Markets', 'Rental Transport', 'Rental Houses', 'Construction Materials',
+  'Training Institutions', 'Government Offices', 'Manpower Services', 'Show Rooms',
+  'Bike & Car Mechanics', 'Tourist Places', 'Cold Storages', 'Lodges', 'Bus stand',
+  'Police station', 'Temples', 'Banks', 'Beauty clinics', 'Movie Theaters', 'Shopping clothes',
+  'Retail marts', 'Wine shops', 'Jewellery shops',
+]
 
 function CategoryThumbnail({ name }: { name: string }) {
   const [source, setSource] = useState(getCategoryImage(name))
@@ -21,7 +41,9 @@ function CategoryThumbnail({ name }: { name: string }) {
 
 export default function Categories({ navigation }: any) {
   const { t, category: categoryLabel } = useLanguage()
-  const rootCategories = categories.filter(category => !category.parentId)
+  const rootCategories = categories
+    .filter(category => !category.parentId)
+    .sort((first, second) => categoryPriority.indexOf(first.name) - categoryPriority.indexOf(second.name))
 
   return (
     <View style={styles.screen}>

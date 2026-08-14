@@ -19,6 +19,7 @@ const categoryTranslations: Record<string, string> = {
   'Shopping clothes': 'బట్టల షాపులు', 'Retail marts': 'రిటైల్ మార్ట్స్', 'Wine shops': 'వైన్ షాపులు',
   'Jewellery shops': 'జువెలరీ షాపులు', RealEstate: 'రియల్ ఎస్టేట్', 'ATM machines': 'ఏటీఎం కేంద్రాలు',
   'Agricultural info': 'వ్యవసాయ సమాచారం', 'Engineering colleges': 'ఇంజనీరింగ్ కాలేజీలు', 'Degree colleges': 'డిగ్రీ కాలేజీలు',
+  'Training Institutions': 'శిక్షణా సంస్థలు', 'Computer Training': 'కంప్యూటర్ శిక్షణ', 'Spoken English': 'స్పోకెన్ ఇంగ్లీష్', 'Driving Schools': 'డ్రైవింగ్ పాఠశాలలు', 'Skill Development': 'నైపుణ్య అభివృద్ధి',
   Intermediate: 'ఇంటర్మీడియట్', 'Polytechnic colleges': 'పాలిటెక్నిక్ కాలేజీలు', Schools: 'పాఠశాలలు',
 }
 

@@ -4,11 +4,14 @@ import { useAuth } from '../context/AuthContext'
 import { businesses } from '../data/localData'
 import BottomNav from './BottomNav'
 import { useLanguage } from '../context/LanguageContext'
+import { useNearby } from '../context/NearbyContext'
 
 export default function Favorites({ navigation }: any) {
   const { favorites, isLoggedIn, user, logout } = useAuth()
   const { t, category: categoryLabel } = useLanguage()
+  const { distances, ready, ensureAddresses, sortNearest } = useNearby()
   const savedBusinesses = businesses.filter((business) => favorites.includes(business.id))
+  React.useEffect(() => { if (ready) ensureAddresses(savedBusinesses.map((business) => business.address)) }, [savedBusinesses.length, ready])
 
   return (
     <View style={styles.screen}>
@@ -36,13 +39,13 @@ export default function Favorites({ navigation }: any) {
             </Pressable>
           </View>
         ) : (
-          savedBusinesses.map((business) => (
+          sortNearest(savedBusinesses).map((business) => (
             <Pressable key={business.id} style={styles.businessCard} onPress={() => navigation.navigate('BusinessDetails', { id: business.id })}>
               <View style={styles.businessIcon}><Text style={styles.businessIconText}>{business.categoryName?.charAt(0) || 'M'}</Text></View>
               <View style={styles.businessBody}>
                 <Text style={styles.businessName}>{business.name}</Text>
                 <Text style={styles.businessCategory}>{categoryLabel(business.categoryName)}</Text>
-                <Text style={styles.businessAddress}>{business.address}</Text>
+                <Text style={styles.businessAddress}>{business.address}</Text><Text style={styles.businessDistance}>{distances[business.address] !== undefined ? `${distances[business.address].toFixed(1)} km away` : 'Finding distance…'}</Text>
               </View>
               <Text style={styles.arrow}>›</Text>
             </Pressable>
@@ -88,5 +91,6 @@ const styles = StyleSheet.create({
   businessName: { color: '#202332', fontSize: 16, fontWeight: '800', lineHeight: 22 },
   businessCategory: { marginTop: 3, color: '#5D5EE8', fontSize: 11, fontWeight: '700' },
   businessAddress: { marginTop: 4, color: '#636B82', fontSize: 11, lineHeight: 16 },
+  businessDistance: { marginTop: 3, color: '#4D8052', fontSize: 11, fontWeight: '700' },
   arrow: { color: '#2A2B3A', fontSize: 28, marginLeft: 8 },
 })

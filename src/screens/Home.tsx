@@ -1,25 +1,28 @@
 import React, { useEffect, useRef, useState } from 'react'
-import * as Location from 'expo-location'
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native'
 import BottomNav from './BottomNav'
 import { getBusinessImage } from '../utils/categoryImages'
 import MobileHeader from './MobileHeader'
-import { fetchGoldRate, fetchWeather, geocodeAddress, GoldRate, WeatherReport } from '../services/api'
+import { fetchGoldRate, fetchWeather, GoldRate, WeatherReport } from '../services/api'
 import { businesses } from '../data/localData'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
+import { useReviews } from '../context/ReviewContext'
+import { useNearby } from '../context/NearbyContext'
 
 const cards = [
   { id: '1', name: 'Education' },
   { id: '2', name: 'Hospitals' },
   { id: '3', name: 'Medical shops' },
   { id: '4', name: 'Restaurants' },
+  { id: '21', name: 'Real Estate' },
+  { id: '22', name: 'Agriculture' },
   { id: '6', name: 'Lodges' },
   { id: '7', name: 'Bus stand' },
 ]
 
 const categoryIcons: Record<string, string> = {
-  Education: '🎓', Hospitals: '🏥', 'Medical shops': '💊', Restaurants: '🍽️', Lodges: '🛏️', 'Bus stand': '🚌',
+  Education: '🎓', Hospitals: '🏥', 'Medical shops': '💊', Restaurants: '🍽️', 'Real Estate': '🏘️', Agriculture: '🌾', Lodges: '🛏️', 'Bus stand': '🚌',
 }
 
 const updates = [
@@ -39,18 +42,10 @@ function localPopularBusinesses() {
     .slice(0, 2))
 }
 
-function distanceInKm(first: { latitude: number; longitude: number }, second: { latitude: number; longitude: number }) {
-  const earthRadius = 6371
-  const latitudeDelta = (second.latitude - first.latitude) * Math.PI / 180
-  const longitudeDelta = (second.longitude - first.longitude) * Math.PI / 180
-  const latitude = first.latitude * Math.PI / 180
-  const targetLatitude = second.latitude * Math.PI / 180
-  const value = Math.sin(latitudeDelta / 2) ** 2 + Math.cos(latitude) * Math.cos(targetLatitude) * Math.sin(longitudeDelta / 2) ** 2
-  return earthRadius * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value))
-}
-
 export default function Home({ navigation }: any) {
   const { favorites, toggleFavorite, isLoggedIn } = useAuth()
+  const { getReviewStats } = useReviews()
+  const { distances, ready, ensureAddresses, sortNearest } = useNearby()
   const { t, category: categoryLabel } = useLanguage()
   const [search, setSearch] = useState('')
   const [weather, setWeather] = useState<WeatherReport>(fallbackWeather)
@@ -71,33 +66,7 @@ export default function Home({ navigation }: any) {
     fetchGoldRate().then(setGold).catch(() => undefined)
   }, [])
 
-  useEffect(() => {
-    let active = true
-    const loadNearbyBusinesses = async () => {
-      try {
-        const permission = await Location.requestForegroundPermissionsAsync()
-        if (permission.status !== 'granted') return
-        const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
-        const origin = { latitude: position.coords.latitude, longitude: position.coords.longitude }
-        const candidates = ['2', '4', '3'].flatMap((categoryId) => businesses.filter((business) => business.categoryId === categoryId).slice(0, 8))
-        const located = await Promise.all(candidates.map(async (business) => {
-          const coordinates = await geocodeAddress(business.address)
-          return coordinates ? { business, distance: distanceInKm(origin, coordinates) } : null
-        }))
-        if (!active) return
-        const nearest = ['2', '4', '3'].flatMap((categoryId) => located
-          .filter((item): item is { business: any; distance: number } => !!item && item.business.categoryId === categoryId)
-          .sort((first, second) => first.distance - second.distance)
-          .slice(0, 2)
-          .map((item) => item.business))
-        if (nearest.length > 0) setPopularBusinesses(nearest)
-      } catch {
-        // Keep deterministic local-address results when location services are unavailable.
-      }
-    }
-    loadNearbyBusinesses()
-    return () => { active = false }
-  }, [])
+  useEffect(() => { if (ready) ensureAddresses(popularBusinesses.map((business) => business.address)) }, [popularBusinesses.length, ready, ensureAddresses])
 
   return (
     <View style={styles.screen}>
@@ -172,8 +141,9 @@ export default function Home({ navigation }: any) {
 
         <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>{t('Popular Near You', 'మీకు సమీపంలోని ప్రసిద్ధ ప్రదేశాలు')}</Text><Pressable onPress={() => navigation.navigate('Businesses')}><Text style={styles.viewAll}>{t('View all', 'అన్నీ చూడండి')} →</Text></Pressable></View>
         <View style={styles.popularList}>
-          {popularBusinesses.map((business) => {
+          {sortNearest(popularBusinesses).map((business) => {
             const isFavorite = favorites.includes(business.id)
+            const reviewStats = getReviewStats(business.id)
             const imageSource = getBusinessImage(business.image, business.categoryName)
             return (
               <Pressable key={business.id} style={styles.businessCard} onPress={() => navigation.navigate('BusinessDetails', { id: business.id })}>
@@ -187,8 +157,8 @@ export default function Home({ navigation }: any) {
                 <View style={styles.businessContent}>
                   <Text style={styles.businessName}>{business.name}</Text>
                   <View style={styles.businessMeta}><Text style={styles.businessCategory}>{categoryLabel(business.categoryName)}</Text><Text style={styles.trending}>{t('Trending', 'ట్రెండింగ్')}</Text></View>
-                  <Text style={styles.rating}>⭐ 4.3 <Text style={styles.reviewCount}>(88 reviews)</Text></Text>
-                  <Text style={styles.businessAddress}>📍 {business.address}</Text>
+                  <Text style={styles.rating}>⭐ {reviewStats.rating.toFixed(1)} <Text style={styles.reviewCount}>({reviewStats.count} reviews)</Text></Text>
+                  <Text style={styles.businessAddress}>📍 {business.address}</Text><Text style={styles.businessDistance}>{distances[business.address] !== undefined ? `${distances[business.address].toFixed(1)} km away` : 'Finding distance…'}</Text>
                 </View>
               </Pressable>
             )
@@ -433,6 +403,7 @@ const styles = StyleSheet.create({
   rating: { marginTop: 10, color: '#D89B00', fontSize: 14, fontWeight: '800' },
   reviewCount: { color: '#5E5A5A', fontWeight: '500' },
   businessAddress: { marginTop: 9, color: '#676263', fontSize: 13, lineHeight: 18 },
+  businessDistance: { marginTop: 4, color: '#4D8052', fontSize: 11, fontWeight: '700' },
   phoneCardName: {
     fontSize: 16,
     lineHeight: 21,

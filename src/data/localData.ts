@@ -30,6 +30,59 @@ export const categories = [
   { id: '15', name: 'Retail marts', parentId: null },
   { id: '16', name: 'Wine shops', parentId: null },
   { id: '17', name: 'Jewellery shops', parentId: null },
+  { id: '21', name: 'Real Estate', parentId: null },
+  { id: 're-1', name: 'Plots for Sale', parentId: '21' },
+  { id: 're-2', name: 'Property Agents', parentId: '21' },
+  { id: '22', name: 'Agriculture', parentId: null },
+  { id: 'ag-1', name: 'Tobacco Boards', parentId: '22' },
+  { id: 'ag-2', name: 'Vegetable Markets', parentId: '22' },
+  { id: 'ag-3', name: 'Fish Markets', parentId: '22' },
+  { id: 'ag-4', name: 'Fruit Markets', parentId: '22' },
+  { id: '23', name: 'Food & Meat Markets', parentId: null },
+  { id: 'fm-1', name: 'Vegetable Markets', parentId: '23' },
+  { id: 'fm-2', name: 'Fish Markets', parentId: '23' },
+  { id: 'fm-3', name: 'Fruit Markets', parentId: '23' },
+  { id: 'fm-4', name: 'Mutton Shops', parentId: '23' },
+  { id: 'fm-5', name: 'Chicken Shops', parentId: '23' },
+  { id: 'fm-6', name: 'Sweet Shops', parentId: '23' },
+  { id: '24', name: 'Rental Transport', parentId: null },
+  { id: 'rt-1', name: 'Cars for Rent', parentId: '24' },
+  { id: 'rt-2', name: 'Autos for Rent', parentId: '24' },
+  { id: 'rt-3', name: 'Lorries for Rent', parentId: '24' },
+  { id: 'rt-4', name: 'Tractors for Rent', parentId: '24' },
+  { id: 'rt-5', name: 'JCBs for Rent', parentId: '24' },
+  { id: '25', name: 'Tourist Places', parentId: null },
+  { id: 'tp-1', name: 'Rallapadu Reservoir', parentId: '25' },
+  { id: 'tp-2', name: 'Malakonda', parentId: '25' },
+  { id: 'tp-3', name: 'Swagameswaram', parentId: '25' },
+  { id: '26', name: 'Rental Houses', parentId: null },
+  { id: '27', name: 'Construction Materials', parentId: null },
+  { id: 'cm-1', name: 'Sand', parentId: '27' },
+  { id: 'cm-2', name: 'Kankara', parentId: '27' },
+  { id: 'cm-3', name: 'Cement', parentId: '27' },
+  { id: 'cm-4', name: 'Bricks', parentId: '27' },
+  { id: '28', name: 'Government Offices', parentId: null },
+  { id: 'go-1', name: 'MRO Office', parentId: '28' },
+  { id: 'go-2', name: 'Municipality Office', parentId: '28' },
+  { id: 'go-3', name: 'Registration Office', parentId: '28' },
+  { id: '29', name: 'Cold Storages', parentId: null },
+  { id: '30', name: 'Manpower Services', parentId: null },
+  { id: 'mp-1', name: 'Mestri', parentId: '30' },
+  { id: 'mp-2', name: 'Plumber', parentId: '30' },
+  { id: 'mp-3', name: 'Electricians', parentId: '30' },
+  { id: 'mp-4', name: 'Tiles Work', parentId: '30' },
+  { id: 'mp-5', name: 'False Ceiling', parentId: '30' },
+  { id: 'mp-6', name: 'Bore Points', parentId: '30' },
+  { id: '31', name: 'Show Rooms', parentId: null },
+  { id: 'sr-1', name: 'Bike Show Rooms', parentId: '31' },
+  { id: 'sr-2', name: 'Car Show Rooms', parentId: '31' },
+  { id: 'sr-3', name: 'Vehicle Wash', parentId: '31' },
+  { id: '32', name: 'Bike & Car Mechanics', parentId: null },
+  { id: '33', name: 'Training Institutions', parentId: null },
+  { id: 'ti-1', name: 'Computer Training', parentId: '33' },
+  { id: 'ti-2', name: 'Spoken English', parentId: '33' },
+  { id: 'ti-3', name: 'Driving Schools', parentId: '33' },
+  { id: 'ti-4', name: 'Skill Development', parentId: '33' },
 ]
 
 export const businesses = [
@@ -2135,5 +2188,129 @@ export const businesses = [
     source: 'https://www.google.com/maps/search/BR+OXFORD+JUNIOR+COLLEGE+Kandukur',
     description: 'Higher secondary education institution listed in Kandukur.',
     gallery: []
+  },
+  {
+    id: 're-plot-vippagunta', name: 'Vippagunta Road Residential Plots', categoryId: 're-1', categoryName: 'Plots for Sale',
+    address: 'Vippagunta Road, Kandukur, Andhra Pradesh', phone: '9876543210', website: 'N/A',
+    description: 'Clear title and road access.', propertyType: 'Plot for sale', sellerType: 'Direct owner', gadhulu: '8 gadhulu', plotFace: 'East', locationName: 'Vippagunta Road', gallery: []
+  },
+  {
+    id: 're-plot-kovur', name: 'Kovur Road Open Plots', categoryId: 're-1', categoryName: 'Plots for Sale',
+    address: 'Kovur Road, Kandukur, Andhra Pradesh', phone: '9123456780', website: 'N/A',
+    description: 'Near proposed residential development.', propertyType: 'Plot for sale', sellerType: 'Agent', gadhulu: '6 gadhulu', plotFace: 'North', locationName: 'Kovur Road', gallery: []
+  },
+  {
+    id: 're-ecr-agent', name: 'ECR Layout Property Desk', categoryId: 're-2', categoryName: 'Property Agents',
+    address: 'ECR Layout, Kandukur, Andhra Pradesh', phone: '9012345678', website: 'N/A',
+    description: 'Agent support for plots, houses and agricultural land. Ask for availability, facing and registration details.', propertyType: 'Property services', sellerType: 'Agent', gadhulu: 'On request', plotFace: 'Multiple faces', locationName: 'ECR Layout', gallery: []
+  },
+  {
+    id: 'ag-tobacco-board', name: 'Kandukur Tobacco Board Information Centre', categoryId: 'ag-1', categoryName: 'Tobacco Boards',
+    address: 'Tobacco Board Road, Kandukur, Andhra Pradesh', phone: '08598-222111', website: 'N/A',
+    description: 'Tobacco auction, farmer registration and crop information support. Location: Tobacco Board Road.', gallery: []
+  },
+  {
+    id: 'market-vegetable', name: 'Kandukur Vegetable Market', categoryId: 'fm-1', categoryName: 'Vegetable Markets',
+    address: 'Market Road, Kandukur, Andhra Pradesh', phone: 'N/A', website: 'N/A', description: 'Daily fresh vegetables and wholesale market stalls.', gallery: []
+  },
+  {
+    id: 'market-fish', name: 'Kandukur Fish Market', categoryId: 'fm-2', categoryName: 'Fish Markets',
+    address: 'Near Bus Stand, Kandukur, Andhra Pradesh', phone: 'N/A', website: 'N/A', description: 'Fresh fish market with morning and evening availability.', gallery: []
+  },
+  {
+    id: 'market-fruit', name: 'Kandukur Fruit Market', categoryId: 'fm-3', categoryName: 'Fruit Markets',
+    address: 'Main Market, Kandukur, Andhra Pradesh', phone: 'N/A', website: 'N/A', description: 'Seasonal fruit sellers and wholesale fruit stalls.', gallery: []
+  },
+  {
+    id: 'market-mutton', name: 'Fresh Mutton Centre', categoryId: 'fm-4', categoryName: 'Mutton Shops',
+    address: 'Pamur Road, Kandukur, Andhra Pradesh', phone: 'N/A', website: 'N/A', description: 'Fresh mutton and hygienic cut-to-order service.', gallery: []
+  },
+  {
+    id: 'market-chicken', name: 'Fresh Chicken Shop', categoryId: 'fm-5', categoryName: 'Chicken Shops',
+    address: 'Kovur Road, Kandukur, Andhra Pradesh', phone: 'N/A', website: 'N/A', description: 'Fresh chicken, cleaned and cut to order.', gallery: []
+  },
+  {
+    id: 'transport-car', name: 'Kandukur Car Rental Service', categoryId: 'rt-1', categoryName: 'Cars for Rent',
+    address: 'Railway Station Road, Kandukur, Andhra Pradesh', phone: '9988776655', website: 'N/A', description: 'Rental details: AC and non-AC cars, with driver or self-drive. Advance booking recommended.', gallery: []
+  },
+  {
+    id: 'transport-auto', name: 'Local Auto Rental Service', categoryId: 'rt-2', categoryName: 'Autos for Rent',
+    address: 'Kandukur Bus Stand, Andhra Pradesh', phone: '9988776656', website: 'N/A', description: 'Auto rental for local trips, hourly hire and outstation travel.', gallery: []
+  },
+  {
+    id: 'transport-lorry', name: 'Lorry and Goods Transport', categoryId: 'rt-3', categoryName: 'Lorries for Rent',
+    address: 'Industrial Area, Kandukur, Andhra Pradesh', phone: '9988776657', website: 'N/A', description: 'Goods vehicle rental. Details: load capacity, trip hire and driver available.', gallery: []
+  },
+  {
+    id: 'transport-tractor', name: 'Kandukur Tractor Hire', categoryId: 'rt-4', categoryName: 'Tractors for Rent',
+    address: 'Agricultural Market Road, Kandukur, Andhra Pradesh', phone: '9988776658', website: 'N/A', description: 'Tractor rental for ploughing, transport and farm work. Driver available on request.', gallery: []
+  },
+  {
+    id: 'transport-jcb', name: 'JCB Earthwork Rental', categoryId: 'rt-5', categoryName: 'JCBs for Rent',
+    address: 'Kovur Road, Kandukur, Andhra Pradesh', phone: '9988776659', website: 'N/A', description: 'JCB hire for excavation, construction and site preparation. Hourly and daily rates.', gallery: []
+  },
+  {
+    id: 'tourist-rallapadu', name: 'Rallapadu Reservoir', categoryId: 'tp-1', categoryName: 'Rallapadu Reservoir',
+    address: 'Rallapadu Reservoir, near Kandukur, Andhra Pradesh', phone: 'N/A', website: 'N/A', description: 'Reservoir and nature destination suitable for a peaceful local day trip.', gallery: []
+  },
+  {
+    id: 'tourist-malakonda', name: 'Malakonda Temple and Hills', categoryId: 'tp-2', categoryName: 'Malakonda',
+    address: 'Malakonda, Prakasam District, Andhra Pradesh', phone: 'N/A', website: 'N/A', description: 'Hill and temple destination with a scenic route from Kandukur.', gallery: []
+  },
+  {
+    id: 'tourist-swagameswaram', name: 'Swagameswaram', categoryId: 'tp-3', categoryName: 'Swagameswaram',
+    address: 'Swagameswaram, Prakasam District, Andhra Pradesh', phone: 'N/A', website: 'N/A', description: 'Local spiritual and cultural destination for visitors.', gallery: []
+  },
+  {
+    id: 'rental-house-kandukur', name: 'Kandukur Rental Houses Desk', categoryId: '26', categoryName: 'Rental Houses',
+    address: 'Kandukur, Andhra Pradesh', phone: '9876501234', website: 'N/A', description: 'Rental houses and portions. Ask for bedrooms, deposit, rent and availability.', gallery: []
+  },
+  {
+    id: 'materials-sand', name: 'Kandukur Sand Suppliers', categoryId: 'cm-1', categoryName: 'Sand', address: 'Kandukur, Andhra Pradesh', phone: '9876501235', website: 'N/A', description: 'Construction sand supply with load and delivery options.', gallery: []
+  },
+  {
+    id: 'materials-cement', name: 'Sri Sai Cement Suppliers', categoryId: 'cm-3', categoryName: 'Cement', address: 'Main Road, Kandukur, Andhra Pradesh', phone: '9876501236', website: 'N/A', description: 'Cement brands, bulk orders and delivery for construction sites.', gallery: []
+  },
+  {
+    id: 'materials-bricks', name: 'Kandukur Brick Suppliers', categoryId: 'cm-4', categoryName: 'Bricks', address: 'Vippagunta Road, Kandukur, Andhra Pradesh', phone: '9876501237', website: 'N/A', description: 'Red bricks and building blocks with local delivery.', gallery: []
+  },
+  {
+    id: 'gov-mro', name: 'MRO Office Kandukur', categoryId: 'go-1', categoryName: 'MRO Office', address: 'MRO Office Road, Kandukur, Andhra Pradesh', phone: '08598-222333', website: 'N/A', description: 'Mandal Revenue Office information and public services.', gallery: []
+  },
+  {
+    id: 'gov-municipality', name: 'Kandukur Municipality Office', categoryId: 'go-2', categoryName: 'Municipality Office', address: 'Municipal Office Road, Kandukur, Andhra Pradesh', phone: '08598-222334', website: 'N/A', description: 'Municipal services, certificates and local civic support.', gallery: []
+  },
+  {
+    id: 'gov-registration', name: 'Kandukur Registration Office', categoryId: 'go-3', categoryName: 'Registration Office', address: 'Registration Office Road, Kandukur, Andhra Pradesh', phone: '08598-222335', website: 'N/A', description: 'Property registration and document services.', gallery: []
+  },
+  {
+    id: 'cold-mirchi-tobacco', name: 'Mirchi and Tobacco Cold Storage', categoryId: '29', categoryName: 'Cold Storages', address: 'Agricultural Market Road, Kandukur, Andhra Pradesh', phone: '9876501238', website: 'N/A', description: 'Cold storage for mirchi and tobacco. Details: capacity, booking season and loading support.', gallery: []
+  },
+  {
+    id: 'manpower-mestri', name: 'Kandukur Mestri Services', categoryId: 'mp-1', categoryName: 'Mestri', address: 'Kandukur, Andhra Pradesh', phone: '9876501239', website: 'N/A', description: 'Building masons for residential and commercial work.', gallery: []
+  },
+  {
+    id: 'manpower-electrician', name: 'Local Electricians Network', categoryId: 'mp-3', categoryName: 'Electricians', address: 'Kandukur, Andhra Pradesh', phone: '9876501240', website: 'N/A', description: 'House wiring, repairs, fans, pumps and electrical installation.', gallery: []
+  },
+  {
+    id: 'showroom-bikes', name: 'Kandukur Bike Show Room', categoryId: 'sr-1', categoryName: 'Bike Show Rooms', address: 'Main Road, Kandukur, Andhra Pradesh', phone: '9876501241', website: 'N/A', description: 'New bike sales, finance, service and test rides.', gallery: []
+  },
+  {
+    id: 'showroom-cars', name: 'Kandukur Car Show Room', categoryId: 'sr-2', categoryName: 'Car Show Rooms', address: 'Vippagunta Road, Kandukur, Andhra Pradesh', phone: '9876501242', website: 'N/A', description: 'New and used car enquiries, finance and test drives.', gallery: []
+  },
+  {
+    id: 'mechanic-auto', name: 'Kandukur Bike and Car Mechanics', categoryId: '32', categoryName: 'Bike & Car Mechanics', address: 'Kovur Road, Kandukur, Andhra Pradesh', phone: '9876501243', website: 'N/A', description: 'Two-wheeler and car repairs, oil service, puncture and breakdown support.', gallery: []
+  },
+  {
+    id: 'training-computer-kandukur', name: 'Kandukur Computer Training Centre', categoryId: 'ti-1', categoryName: 'Computer Training', address: 'Main Road, Kandukur, Andhra Pradesh', phone: '9876501250', website: 'N/A', description: 'Computer basics, MS Office, Tally, programming and job-oriented digital skills training.', gallery: []
+  },
+  {
+    id: 'training-english-kandukur', name: 'Kandukur Spoken English Academy', categoryId: 'ti-2', categoryName: 'Spoken English', address: 'OV Road, Kandukur, Andhra Pradesh', phone: '9876501251', website: 'N/A', description: 'Spoken English, interview preparation, communication and personality development classes.', gallery: []
+  },
+  {
+    id: 'training-driving-kandukur', name: 'Kandukur Motor Driving School', categoryId: 'ti-3', categoryName: 'Driving Schools', address: 'Kovur Road, Kandukur, Andhra Pradesh', phone: '9876501252', website: 'N/A', description: 'Two-wheeler and four-wheeler driving lessons, learner support and licence guidance.', gallery: []
+  },
+  {
+    id: 'training-skills-kandukur', name: 'Kandukur Skill Development Centre', categoryId: 'ti-4', categoryName: 'Skill Development', address: 'Bus Stand Road, Kandukur, Andhra Pradesh', phone: '9876501253', website: 'N/A', description: 'Job skills, vocational training, tailoring, electrical basics and employment guidance.', gallery: []
   }
 ]

@@ -3,8 +3,10 @@ import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'rea
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useNotifications } from '../context/NotificationContext'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export default function MobileHeader({ navigation }: { navigation: any }) {
+  const insets = useSafeAreaInsets()
   const { user } = useAuth()
   const { language, setLanguage, t } = useLanguage()
   const { notifications, clearNotifications } = useNotifications()
@@ -12,11 +14,11 @@ export default function MobileHeader({ navigation }: { navigation: any }) {
   const [selectedNotification, setSelectedNotification] = useState<typeof notifications[number] | null>(null)
 
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
       <View style={styles.brandBlock}>
         <View style={styles.mark}><Text style={styles.markText}>MK</Text></View>
         <View style={styles.brandCopy}>
-          <Text style={styles.brand}>Mana Kandukur</Text>
+          <Text style={styles.brand} numberOfLines={1} ellipsizeMode="tail">Mana Kandukur</Text>
           <View style={styles.agriStrip}>
             <Text style={styles.agriItem}>🌾</Text>
             <Text style={styles.agriItem}>🌿</Text>
@@ -105,26 +107,26 @@ export default function MobileHeader({ navigation }: { navigation: any }) {
 }
 
 const styles = StyleSheet.create({
-  header: { position: 'relative', zIndex: 10, minHeight: 50, paddingTop: 0, paddingBottom: 0, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: '#B67870' },
-  brandBlock: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', marginRight: 6 },
+  header: { position: 'relative', zIndex: 10, minHeight: 70, paddingBottom: 8, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: '#B67870' },
+  brandBlock: { flex: 1, minWidth: 105, flexDirection: 'row', alignItems: 'center', marginRight: 2 },
   mark: { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center', marginRight: 7, backgroundColor: 'rgba(255,255,255,0.22)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)' },
   markText: { color: '#FFF', fontSize: 17, fontWeight: '800' },
   brandCopy: { flexShrink: 1, minWidth: 0 },
-  brand: { maxWidth: 120, color: '#FFF', fontSize: 17, lineHeight: 20, fontWeight: '800' },
+  brand: { flexShrink: 1, maxWidth: 110, color: '#FFF', fontSize: 15, lineHeight: 18, fontWeight: '800' },
   agriStrip: { flexDirection: 'row', gap: 4, marginTop: 4 },
   agriItem: { width: 19, height: 19, borderRadius: 10, overflow: 'hidden', textAlign: 'center', fontSize: 11, lineHeight: 19, backgroundColor: 'rgba(255,255,255,0.2)' },
-  actions: { flexShrink: 0, flexDirection: 'row', alignItems: 'center', gap: 4, transform: [{ translateY: 8 }] },
-  agriImage: { width: 38, height: 38, borderRadius: 12 },
-  languageToggle: { flexDirection: 'row', padding: 2, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.16)', transform: [{ translateY: 5 }] },
-  language: { paddingHorizontal: 8, paddingVertical: 8, borderRadius: 13 },
+  actions: { flexShrink: 0, flexDirection: 'row', alignItems: 'center', gap: 2 },
+  agriImage: { width: 31, height: 31, borderRadius: 10 },
+  languageToggle: { flexDirection: 'row', padding: 1, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.16)' },
+  language: { paddingHorizontal: 5, paddingVertical: 6, borderRadius: 10 },
   activeLanguage: { backgroundColor: '#FFF4EC' },
   languageText: { color: '#FFF', fontSize: 11, fontWeight: '800' },
   activeLanguageText: { color: '#9A5545' },
-  profileButton: { maxWidth: 94, minWidth: 80, height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', transform: [{ translateY: 5 }] },
-  profileText: { color: '#FFF', fontSize: 18, marginRight: 6 },
-  profileName: { maxWidth: 62, color: '#FFF', fontSize: 11, fontWeight: '800' },
-  notificationButton: { position: 'relative', width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', backgroundColor: 'rgba(55,42,30,0.28)', transform: [{ translateY: 5 }] },
-  bell: { color: '#FFF', fontSize: 23 },
+  profileButton: { maxWidth: 76, minWidth: 64, height: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.2)' },
+  profileText: { color: '#FFF', fontSize: 15, marginRight: 3 },
+  profileName: { maxWidth: 49, color: '#FFF', fontSize: 9, fontWeight: '800' },
+  notificationButton: { position: 'relative', width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', backgroundColor: 'rgba(55,42,30,0.28)' },
+  bell: { color: '#FFF', fontSize: 19 },
   notificationDot: { position: 'absolute', top: 5, right: 5, width: 7, height: 7, borderRadius: 4, backgroundColor: '#FF4F5E', borderWidth: 1, borderColor: '#FFF' },
   notificationBackdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16, backgroundColor: 'rgba(25, 24, 25, 0.58)' },
   notificationPanel: { width: '100%', maxWidth: 440, maxHeight: '82%', padding: 16, borderRadius: 22, backgroundColor: '#FFFDFB' },

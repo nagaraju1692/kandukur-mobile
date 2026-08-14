@@ -6,16 +6,19 @@ import MobileHeader from './MobileHeader'
 import { getBusinessImage } from '../utils/categoryImages'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
+import { useNearby } from '../context/NearbyContext'
 
 export default function Search({ navigation, route }: any) {
   const [query, setQuery] = useState(route.params?.query || '')
   const { favorites, toggleFavorite, isLoggedIn } = useAuth()
   const { t, category: categoryLabel } = useLanguage()
+  const { distances, ready, ensureAddresses, sortNearest } = useNearby()
   const results = useMemo(() => {
     const normalized = query.trim().toLowerCase()
     if (!normalized) return businesses.slice(0, 30)
     return businesses.filter((business) => `${business.name} ${business.categoryName} ${business.address}`.toLowerCase().includes(normalized)).slice(0, 30)
   }, [query])
+  React.useEffect(() => { if (ready) ensureAddresses(results.map((business) => business.address)) }, [results.length, ready])
 
   return (
     <View style={styles.screen}>
@@ -36,10 +39,10 @@ export default function Search({ navigation, route }: any) {
         </View>
 
         {query.trim() && results.length === 0 && <Text style={styles.empty}>{t('No matching places found.', 'సరిపోలే ప్రదేశాలు కనుగొనబడలేదు.')}</Text>}
-        {results.map((business) => (
+        {sortNearest(results).map((business) => (
           <Pressable key={business.id} style={styles.resultCard} onPress={() => navigation.navigate('BusinessDetails', { id: business.id })}>
             <View style={styles.resultImageWrap}><Image source={getBusinessImage(business.image, business.categoryName)} style={styles.image} /><Pressable style={styles.favoriteButton} onPress={() => isLoggedIn ? toggleFavorite(business.id) : navigation.navigate('Profile')}><Text style={[styles.favorite, favorites.includes(business.id) && styles.favoriteActive]}>{favorites.includes(business.id) ? '♥' : '♡'}</Text></Pressable></View>
-            <View style={styles.resultBody}><Text style={styles.name}>{business.name}</Text><Text style={styles.category}>{categoryLabel(business.categoryName)}</Text><Text style={styles.address}>📍 {business.address}</Text></View>
+            <View style={styles.resultBody}><Text style={styles.name}>{business.name}</Text><Text style={styles.category}>{categoryLabel(business.categoryName)}</Text><Text style={styles.address}>📍 {business.address}</Text><Text style={styles.distance}>{distances[business.address] !== undefined ? `${distances[business.address].toFixed(1)} km away` : 'Finding distance…'}</Text></View>
           </Pressable>
         ))}
       </ScrollView>
@@ -70,4 +73,5 @@ const styles = StyleSheet.create({
   name: { color: '#202332', fontSize: 17, fontWeight: '800', lineHeight: 23 },
   category: { alignSelf: 'flex-start', marginTop: 8, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 13, color: '#C95E49', backgroundColor: '#FFF0E9', fontSize: 11, fontWeight: '800' },
   address: { marginTop: 10, color: '#636B82', fontSize: 12, lineHeight: 18 },
+  distance: { marginTop: 3, color: '#4D8052', fontSize: 11, fontWeight: '700' },
 })

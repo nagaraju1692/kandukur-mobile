@@ -1,17 +1,24 @@
-import React from 'react'
-import { Alert, Image, Linking, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native'
+import React, { useState } from 'react'
+import { Alert, Image, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native'
 import { businesses } from '../data/localData'
 import { useAuth } from '../context/AuthContext'
 import { getBusinessImage } from '../utils/categoryImages'
 import BottomNav from './BottomNav'
 import MobileHeader from './MobileHeader'
 import { useLanguage } from '../context/LanguageContext'
+import { useReviews } from '../context/ReviewContext'
+import { useNearby } from '../context/NearbyContext'
 
 export default function BusinessDetails({ route, navigation }: any) {
   const { id } = route.params || {}
   const business = businesses.find(item => item.id === id)
   const { favorites, toggleFavorite, isLoggedIn } = useAuth()
   const { t, category: categoryLabel } = useLanguage()
+  const { getReviewStats, getReviews, submitReview } = useReviews()
+  const { distances, ready, ensureAddresses } = useNearby()
+  const [showReviewForm, setShowReviewForm] = useState(false)
+  const [selectedRating, setSelectedRating] = useState(0)
+  const [comment, setComment] = useState('')
 
   if (!business) return <View style={styles.empty}><Text>Listing not found.</Text></View>
 
@@ -21,6 +28,9 @@ export default function BusinessDetails({ route, navigation }: any) {
   const call = () => business.phone && business.phone !== 'N/A' ? Linking.openURL(`tel:${business.phone.replace(/\s/g, '')}`) : Alert.alert(t('Phone unavailable', 'ఫోన్ అందుబాటులో లేదు'), t('This listing does not have a verified phone number.', 'ఈ లిస్టింగ్‌కు ధృవీకరించిన ఫోన్ నంబర్ లేదు.'))
 
   const isFavorite = favorites.includes(business.id)
+  const reviewStats = getReviewStats(business.id)
+  React.useEffect(() => { if (ready) ensureAddresses([business.address]) }, [business.address, ready])
+  const businessReviews = getReviews(business.id)
   const imageSource = getBusinessImage(business.image, business.categoryName)
 
   return (
@@ -36,15 +46,29 @@ export default function BusinessDetails({ route, navigation }: any) {
         <View style={styles.body}>
           <Text style={styles.category}>{categoryLabel(business.categoryName)}</Text>
           <Text style={styles.title}>{business.name}</Text>
+          <Text style={styles.ratingSummary}>{reviewStats.rating.toFixed(1)} ({reviewStats.count} reviews)</Text>
+          <Text style={styles.distance}>{distances[business.address] !== undefined ? `${distances[business.address].toFixed(1)} km from your location` : 'Calculating distance…'}</Text>
           <Text style={styles.description}>{business.description}</Text>
           <View style={styles.actions}><Pressable style={styles.secondary} onPress={call}><Text style={styles.actionIcon}>📞</Text><Text style={styles.secondaryText}>{t('Call', 'కాల్')}</Text></Pressable><Pressable style={styles.primary} onPress={openMap}><Text style={styles.actionIcon}>📍</Text><Text style={styles.primaryText}>{t('Directions', 'దిశలు')}</Text></Pressable><Pressable style={styles.secondary} onPress={share}><Text style={styles.actionIcon}>🔗</Text><Text style={styles.secondaryText}>{t('Share', 'షేర్')}</Text></Pressable><Pressable style={styles.secondary} onPress={() => isLoggedIn ? toggleFavorite(business.id) : navigation.navigate('Profile')}><Text style={styles.actionIcon}>{isFavorite ? '♥' : '♡'}</Text><Text style={styles.secondaryText}>{isFavorite ? t('Saved', 'సేవ్ చేశారు') : t('Save', 'సేవ్')}</Text></Pressable></View>
           <View style={styles.info}><Text style={styles.infoLabel}>{t('ABOUT THIS PLACE', 'ఈ ప్రదేశం గురించి')}</Text><Text style={styles.infoText}>{business.description || t('Discover everything this business has to offer.', 'ఈ వ్యాపారం అందించే సేవలను తెలుసుకోండి.')}</Text><Text style={styles.infoLabel}>{t('CONTACT INFORMATION', 'సంప్రదింపు సమాచారం')}</Text><Text style={styles.infoText}>📞 {business.phone || t('Not available', 'అందుబాటులో లేదు')}</Text><Text style={styles.infoText}>📍 {business.address}</Text>{business.website && <Pressable onPress={openWebsite}><Text style={styles.websiteLink}>🌐 {business.website}</Text></Pressable>}</View>
           <View style={styles.sectionCard}><Text style={styles.infoLabel}>{t('POPULAR SERVICES', 'ప్రసిద్ధ సేవలు')}</Text><View style={styles.serviceRow}>{['General Services', 'Consultation', 'Support', 'Premium', 'Extended Hours'].map((service) => <Text key={service} style={styles.serviceTag}>{t(service, service)}</Text>)}</View></View>
           <View style={styles.sectionCard}><Text style={styles.infoLabel}>{t('HOURS', 'పని వేళలు')}</Text><Text style={styles.infoText}>Monday - Friday: 9:00 AM - 6:00 PM</Text><Text style={styles.infoText}>Saturday: 9:00 AM - 2:00 PM</Text><Text style={styles.infoText}>Sunday: Closed</Text></View>
           <View style={styles.sectionCard}><Text style={styles.infoLabel}>{t(`PHOTOS (${(business.gallery || []).length || 4})`, `ఫోటోలు (${(business.gallery || []).length || 4})`)}</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gallery}>{(business.gallery || []).slice(0, 4).map((image: any, index: number) => <Image key={`${business.id}-${index}`} source={getBusinessImage(image, business.categoryName)} style={styles.galleryImage} resizeMode="cover" />)}</ScrollView></View>
-          <Pressable style={styles.reviewButton} onPress={() => Alert.alert(t('Reviews', 'సమీక్షలు'), t('Review submission will be available soon.', 'సమీక్ష సమర్పణ త్వరలో అందుబాటులో ఉంటుంది.'))}><Text style={styles.reviewButtonText}>{t('Write a Review', 'సమీక్ష రాయండి')}</Text></Pressable>
+          <Pressable style={styles.reviewButton} onPress={() => setShowReviewForm(true)}><Text style={styles.reviewButtonText}>{t('Write a Review', 'సమీక్ష రాయండి')}</Text></Pressable>
+          <View style={styles.sectionCard}><Text style={styles.infoLabel}>{t('REVIEWS', 'సమీక్షలు')} ({businessReviews.length})</Text>{businessReviews.length === 0 ? <Text style={styles.noReviews}>{t('No reviews yet.', 'ఇంకా సమీక్షలు లేవు.')}</Text> : businessReviews.slice().reverse().map((review) => <View key={review.id} style={styles.reviewItem}><Text style={styles.reviewRating}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</Text>{review.comment ? <Text style={styles.reviewComment}>{review.comment}</Text> : null}<Text style={styles.reviewDate}>{new Date(review.createdAt).toLocaleDateString()}</Text></View>)}</View>
         </View>
       </ScrollView>
+      <Modal visible={showReviewForm} transparent animationType="fade" onRequestClose={() => setShowReviewForm(false)}>
+        <View style={styles.reviewBackdrop}>
+          <View style={styles.reviewModal}>
+            <View style={styles.reviewHeading}><Text style={styles.reviewTitle}>{t('Write a Review', 'సమీక్ష రాయండి')}</Text><Pressable onPress={() => setShowReviewForm(false)}><Text style={styles.reviewClose}>×</Text></Pressable></View>
+            <Text style={styles.reviewPrompt}>{t('Your rating', 'మీ రేటింగ్')}</Text>
+            <View style={styles.ratingPicker}>{[1, 2, 3, 4, 5].map((rating) => <Pressable key={rating} onPress={() => setSelectedRating(rating)}><Text style={[styles.ratingStar, rating <= selectedRating && styles.ratingStarSelected]}>★</Text></Pressable>)}</View>
+            <TextInput style={styles.commentInput} multiline placeholder={t('Write your review...', 'మీ సమీక్ష రాయండి...')} placeholderTextColor="#888" value={comment} onChangeText={setComment} />
+            <Pressable style={[styles.submitReview, selectedRating === 0 && styles.submitReviewDisabled]} disabled={selectedRating === 0} onPress={async () => { await submitReview(business.id, selectedRating, comment); setSelectedRating(0); setComment(''); setShowReviewForm(false) }}><Text style={styles.submitReviewText}>{t('Submit review', 'సమీక్ష సమర్పించండి')}</Text></Pressable>
+          </View>
+        </View>
+      </Modal>
       <BottomNav navigation={navigation} active="Categories" />
     </View>
   )
@@ -52,6 +76,26 @@ export default function BusinessDetails({ route, navigation }: any) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#EAEAF9' },
+  ratingSummary: { marginTop: 8, color: '#D89B00', fontSize: 13, fontWeight: '800' },
+  distance: { marginTop: 7, color: '#4D8052', fontSize: 12, fontWeight: '700' },
+  noReviews: { marginTop: 10, color: '#77716D', fontSize: 13 },
+  reviewItem: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#E7E2DE' },
+  reviewRating: { color: '#E5A900', fontSize: 14, letterSpacing: 1 },
+  reviewComment: { marginTop: 6, color: '#4F4B49', fontSize: 13, lineHeight: 19 },
+  reviewDate: { marginTop: 5, color: '#8A827C', fontSize: 10 },
+  reviewBackdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 18, backgroundColor: 'rgba(25,24,25,0.58)' },
+  reviewModal: { width: '100%', padding: 20, borderRadius: 20, backgroundColor: '#FFFDFB' },
+  reviewHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  reviewTitle: { color: '#302C2A', fontSize: 20, fontWeight: '800' },
+  reviewClose: { color: '#555', fontSize: 26 },
+  reviewPrompt: { marginTop: 20, color: '#555', fontSize: 13, fontWeight: '700' },
+  ratingPicker: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  ratingStar: { color: '#D9D9D9', fontSize: 30 },
+  ratingStarSelected: { color: '#E5A900' },
+  commentInput: { minHeight: 90, marginTop: 18, padding: 12, borderRadius: 9, borderWidth: 1, borderColor: '#D9D9E5', color: '#333', textAlignVertical: 'top' },
+  submitReview: { marginTop: 16, alignItems: 'center', paddingVertical: 12, borderRadius: 8, backgroundColor: '#514BD5' },
+  submitReviewDisabled: { opacity: 0.45 },
+  submitReviewText: { color: '#FFF', fontSize: 13, fontWeight: '800' },
   container: { flexGrow: 1, paddingBottom: 100 }, empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   hero: { height: 230, position: 'relative', backgroundColor: '#4A4AD5' }, heroImage: { width: '100%', height: '100%' }, heroShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(25, 25, 70, 0.25)' },
   backButton: { position: 'absolute', top: 18, left: 16, width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.92)' }, backButtonText: { color: '#25263A', fontSize: 30, lineHeight: 33, textAlign: 'center' },
