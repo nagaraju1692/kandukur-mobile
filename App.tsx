@@ -1,6 +1,7 @@
 import 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import React, { useEffect } from 'react';
+import { Alert, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -27,6 +28,7 @@ import SubmitBusiness from './src/screens/SubmitBusiness';
 import Feedback from './src/screens/Feedback';
 import { DirectoryProvider } from './src/context/DirectoryContext';
 import { recordAppUsage } from './src/services/api';
+import { DISMISSED_VERSION_KEY, fetchLatestUpdate } from './src/services/updateCheck';
 
 enableScreens();
 
@@ -53,6 +55,30 @@ function AppRoot() {
     }
 
     registerUsage()
+
+    const checkForUpdate = async () => {
+      try {
+        const update = await fetchLatestUpdate()
+        if (!update || cancelled) return
+
+        const dismissedVersion = await AsyncStorage.getItem(DISMISSED_VERSION_KEY)
+        if (dismissedVersion === update.version) return
+
+        Alert.alert(
+          'Update available',
+          `A new version (${update.version}) of ManaKandukur is ready to install.`,
+          [
+            { text: 'Later', style: 'cancel', onPress: () => AsyncStorage.setItem(DISMISSED_VERSION_KEY, update.version) },
+            { text: 'Update now', onPress: () => Linking.openURL(update.downloadUrl) },
+          ],
+        )
+      } catch {
+        // Ignore update-check failures to keep app startup non-blocking.
+      }
+    }
+
+    checkForUpdate()
+
     return () => { cancelled = true }
   }, [])
 
