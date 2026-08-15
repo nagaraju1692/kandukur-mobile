@@ -1,14 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import BottomNav from './BottomNav';
 import MobileHeader from './MobileHeader';
 import { useLanguage } from '../context/LanguageContext';
-import { fetchJson } from '../services/api';
 import { useSubmittedListings } from '../context/SubmittedListingsContext';
 
 export default function Profile({ navigation }: any) {
-  const { user, isLoggedIn, favorites, login, logout, isSuperAdmin } = useAuth();
+  const { user, isLoggedIn, favorites, login, logout } = useAuth();
   const { listings } = useSubmittedListings();
   const { t } = useLanguage();
   const [name, setName] = useState('');
@@ -16,39 +15,6 @@ export default function Profile({ navigation }: any) {
   const [loginErrors, setLoginErrors] = useState<{ name?: string; phone?: string }>({});
   const [loginError, setLoginError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [adminSummary, setAdminSummary] = useState({ totalUsers: 0, superAdmins: 0, totalBusinesses: 0, installedDevices: 0, totalReviews: 0, totalFeedback: 0 });
-  const [recentActivity, setRecentActivity] = useState<Array<{ type: string; entity_id: string; label: string; created_at: string }>>([]);
-
-  useEffect(() => {
-    if (!isSuperAdmin) return
-    let canceled = false
-    const loadAdminData = async () => {
-      try {
-        const [summaryResponse, activityResponse] = await Promise.all([
-          fetchJson<{ data: { total_users?: number; super_admins?: number; total_businesses?: number; installed_devices?: number; total_reviews?: number; total_feedback?: number } }>('/api/admin/summary', undefined, user?.phone),
-          fetchJson<{ data: Array<{ type: string; entity_id: string; label: string; created_at: string }> }>('/api/admin/recent-activity', undefined, user?.phone),
-        ])
-        if (!canceled) {
-          setAdminSummary({
-            totalUsers: Number(summaryResponse.data.total_users ?? 0),
-            superAdmins: Number(summaryResponse.data.super_admins ?? 0),
-            totalBusinesses: Number(summaryResponse.data.total_businesses ?? 0),
-            installedDevices: Number(summaryResponse.data.installed_devices ?? 0),
-            totalReviews: Number(summaryResponse.data.total_reviews ?? 0),
-            totalFeedback: Number(summaryResponse.data.total_feedback ?? 0),
-          })
-          setRecentActivity(activityResponse.data)
-        }
-      } catch {
-        if (!canceled) {
-          setAdminSummary({ totalUsers: 0, superAdmins: 0, totalBusinesses: 0, installedDevices: 0, totalReviews: 0, totalFeedback: 0 })
-          setRecentActivity([])
-        }
-      }
-    }
-    loadAdminData()
-    return () => { canceled = true }
-  }, [isSuperAdmin])
 
   const activityRows = useMemo(() => [
     { id: 'reviews', icon: '★', label: t('My reviews', 'నా సమీక్షలు'), count: '0' },
@@ -82,7 +48,12 @@ export default function Profile({ navigation }: any) {
   };
 
   const handleLogout = async () => {
-    await logout();
+    try {
+      await logout();
+      Alert.alert(t('Logged out', 'లాగ్ అవుట్ అయ్యారు'), t('You have logged out successfully.', 'మీరు విజయవంతంగా లాగ్ అవుట్ అయ్యారు.'));
+    } catch {
+      Alert.alert(t('Logout failed', 'లాగ్ అవుట్ విఫలమైంది'), t('Unable to log out right now. Please try again.', 'ప్రస్తుతం లాగ్ అవుట్ చేయలేకపోయాం. దయచేసి మళ్లీ ప్రయత్నించండి.'));
+    }
   };
 
   if (!isLoggedIn) {
@@ -152,6 +123,7 @@ export default function Profile({ navigation }: any) {
         <Pressable style={styles.settings} onPress={() => Alert.alert(t('Profile settings', 'ప్రొఫైల్ సెట్టింగ్స్'), t('Profile settings will be available soon.', 'ప్రొఫైల్ సెట్టింగ్స్ త్వరలో అందుబాటులో ఉంటాయి.'))}><Text style={styles.settingsText}>⚙</Text></Pressable>
       </View>
 
+      <ScrollView contentContainerStyle={styles.profileContent} showsVerticalScrollIndicator={false}>
       <View style={styles.identity}>
         <View style={styles.avatar}><Text style={styles.avatarText}>{initials}</Text></View>
         <View style={styles.identityText}>
@@ -180,44 +152,6 @@ export default function Profile({ navigation }: any) {
         <View style={styles.list}>{listings.map((listing) => <View key={listing.id} style={styles.row}><Text style={styles.rowIcon}>＋</Text><View style={styles.submissionCopy}><Text style={styles.rowText}>{listing.name}</Text><Text style={styles.submissionStatus}>{listing.status}</Text></View></View>)}</View>
       </View>}
 
-      {isSuperAdmin && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('Admin', 'అడ్మిన్')}</Text>
-          <View style={styles.metricsGrid}>
-            <View style={styles.metricCard}><Text style={styles.metricValue}>{adminSummary.totalUsers}</Text><Text style={styles.metricLabel}>{t('Users', 'వినియోగదారులు')}</Text></View>
-            <View style={styles.metricCard}><Text style={styles.metricValue}>{adminSummary.installedDevices}</Text><Text style={styles.metricLabel}>{t('Devices', 'డివైస్లు')}</Text></View>
-            <View style={styles.metricCard}><Text style={styles.metricValue}>{adminSummary.totalBusinesses}</Text><Text style={styles.metricLabel}>{t('Listings', 'లిస్టింగ్‌లు')}</Text></View>
-            <View style={styles.metricCard}><Text style={styles.metricValue}>{adminSummary.totalReviews}</Text><Text style={styles.metricLabel}>{t('Reviews', 'సమీక్షలు')}</Text></View>
-          </View>
-          <View style={styles.list}>
-            {[
-              { label: t('Moderation panel', 'మోడరేషన్ ప్యానల్'), icon: '▣', action: () => Alert.alert(t('Moderation panel', 'మోడరేషన్ ప్యానల్'), t('Pending content and listing checks are available for super admins.', 'సూపర్ అడ్మిన్స్‌కి పెండింగ్ కంటెంట్ మరియు లిస్టింగ్ చెక్మార్కులు అందుబాటులో ఉంటాయి.')) },
-              { label: t('Usage analytics', 'వినియోగ అంచనాలు'), icon: '◔', action: () => Alert.alert(t('Usage analytics', 'వినియోగ అంచనాలు'), `${t('Installed devices', 'ఇన్‌స్టాల్ చేసిన డివైస్లు')}: ${adminSummary.installedDevices}`) },
-            ].map((item) => (
-              <Pressable key={item.label} style={styles.row} onPress={item.action}>
-                <Text style={styles.rowIcon}>{item.icon}</Text>
-                <Text style={styles.rowText}>{item.label}</Text>
-                <Text style={styles.arrow}>›</Text>
-              </Pressable>
-            ))}
-          </View>
-          <View style={styles.activityPanel}>
-            <Text style={styles.sectionTitle}>{t('Recent activity', 'చిన్న క్రియల 활동')}</Text>
-            {recentActivity.length === 0 ? (
-              <Text style={styles.emptyActivity}>{t('No recent activity yet.', 'ఇప్పటివరకు ఇటీవలి కార్యకలాపాలు లేవు.')}</Text>
-            ) : (
-              recentActivity.map((item, index) => (
-                <View key={`${item.type}-${item.entity_id}-${index}`} style={styles.activityRow}>
-                  <Text style={styles.activityType}>{item.type}</Text>
-                  <Text style={styles.activityText}>{item.label}</Text>
-                  <Text style={styles.activityTime}>{new Date(item.created_at).toLocaleString()}</Text>
-                </View>
-              ))
-            )}
-          </View>
-        </View>
-      )}
-
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('More', 'మరిన్ని')}</Text>
         <View style={styles.list}>
@@ -239,6 +173,7 @@ export default function Profile({ navigation }: any) {
           ))}
         </View>
       </View>
+      </ScrollView>
       <BottomNav navigation={navigation} active="Profile" />
     </View>
   );
@@ -321,15 +256,23 @@ const styles = StyleSheet.create({
   errorText: { marginTop: 4, color: '#C7414F', fontSize: 11, lineHeight: 15 },
   primaryButton: {
     marginTop: 18,
-    paddingVertical: 13,
-    borderRadius: 10,
-    backgroundColor: '#514BD5',
+    minWidth: 120,
+    minHeight: 36,
+    alignSelf: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 7,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#DCCFE0',
+    backgroundColor: '#1A061D',
   },
   primaryButtonText: {
-    color: '#FFF',
-    fontSize: 14,
+    color: '#FFFFFF',
+    fontSize: 13,
     fontWeight: '800',
+    textAlign: 'center',
   },
   disabledButton: { opacity: 0.55 },
   terms: { marginTop: 12, color: '#7A8195', fontSize: 10, lineHeight: 15, textAlign: 'center' },
@@ -344,6 +287,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E7E8F2',
+  },
+  profileContent: {
+    paddingBottom: 110,
   },
   avatar: {
     width: 52,
@@ -391,33 +337,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: 6,
   },
-  metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 12,
-  },
-  metricCard: {
-    flexBasis: '48%',
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E7E8F2',
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-  },
-  metricValue: {
-    color: '#514BD5',
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  metricLabel: {
-    marginTop: 4,
-    color: '#636D82',
-    fontSize: 11,
-    fontWeight: '700',
-  },
   list: {
     overflow: 'hidden',
     borderRadius: 12,
@@ -453,41 +372,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     marginRight: 10,
-  },
-  activityPanel: {
-    marginTop: 12,
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E7E8F2',
-    padding: 12,
-  },
-  emptyActivity: {
-    color: '#6D7285',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  activityRow: {
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F1F5',
-  },
-  activityType: {
-    color: '#514BD5',
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  activityText: {
-    marginTop: 4,
-    color: '#2D2F3D',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  activityTime: {
-    marginTop: 4,
-    color: '#7A7D89',
-    fontSize: 10,
   },
   arrow: {
     color: '#A7A9B6',

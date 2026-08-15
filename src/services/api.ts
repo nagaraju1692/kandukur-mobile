@@ -116,8 +116,103 @@ export async function fetchJson<T>(path: string, options?: RequestInit, userPhon
   const headers = new Headers(options?.headers)
   if (userPhone) headers.set('x-user-phone', userPhone)
   const response = await fetch(`${apiBaseUrl.replace(/\/$/, '')}${path}`, { ...options, headers })
-  if (!response.ok) throw new Error(`API request failed: ${response.status}`)
+  if (!response.ok) {
+    let message = `API request failed: ${response.status}`
+    try {
+      const payload = await response.json() as { error?: string; message?: string }
+      const details = payload?.error || payload?.message
+      if (details) message = `${message} - ${details}`
+    } catch {
+      // Ignore JSON parsing errors for non-JSON error responses.
+    }
+    throw new Error(message)
+  }
   return response.json() as Promise<T>
+}
+
+export async function uploadAdminAnnouncementImage(
+  asset: { uri: string; fileName?: string | null; mimeType?: string | null },
+  userPhone: string,
+) {
+  if (!apiBaseUrl) throw new Error('EXPO_PUBLIC_API_URL is not configured')
+  const form = new FormData()
+  const fallbackName = `announcement-${Date.now()}.jpg`
+  const fallbackType = 'image/jpeg'
+
+  if (typeof window !== 'undefined') {
+    const fileResponse = await fetch(asset.uri)
+    if (!fileResponse.ok) throw new Error('Unable to read selected image file')
+    const blob = await fileResponse.blob()
+    const fileName = asset.fileName || fallbackName
+    const mimeType = asset.mimeType || blob.type || fallbackType
+    form.append('image', blob, fileName)
+    if (!mimeType && !(blob as any).type) {
+      ;(form as any).append('imageType', fallbackType)
+    }
+  } else {
+    form.append('image', {
+      uri: asset.uri,
+      name: asset.fileName || fallbackName,
+      type: asset.mimeType || fallbackType,
+    } as any)
+  }
+
+  const headers = new Headers()
+  headers.set('x-user-phone', userPhone)
+
+  const response = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/api/admin/uploads/announcement-image`, {
+    method: 'POST',
+    headers,
+    body: form,
+  })
+  if (!response.ok) {
+    let message = `API request failed: ${response.status}`
+    try {
+      const payload = await response.json() as { error?: string; message?: string }
+      const details = payload?.error || payload?.message
+      if (details) message = `${message} - ${details}`
+    } catch {
+      // Ignore JSON parsing errors for non-JSON error responses.
+    }
+    throw new Error(message)
+  }
+  return response.json() as Promise<{ data: { image: string; path: string } }>
+}
+
+export async function uploadAdminBusinessImage(
+  asset: { uri: string; fileName?: string | null; mimeType?: string | null },
+  userPhone: string,
+) {
+  if (!apiBaseUrl) throw new Error('EXPO_PUBLIC_API_URL is not configured')
+  const form = new FormData()
+  const fallbackName = `business-${Date.now()}.jpg`
+  const fallbackType = 'image/jpeg'
+
+  if (typeof window !== 'undefined') {
+    const fileResponse = await fetch(asset.uri)
+    if (!fileResponse.ok) throw new Error('Unable to read selected image file')
+    const blob = await fileResponse.blob()
+    form.append('image', blob, asset.fileName || fallbackName)
+  } else {
+    form.append('image', {
+      uri: asset.uri,
+      name: asset.fileName || fallbackName,
+      type: asset.mimeType || fallbackType,
+    } as any)
+  }
+
+  const headers = new Headers()
+  headers.set('x-user-phone', userPhone)
+  const response = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/api/admin/uploads/business-image`, {
+    method: 'POST',
+    headers,
+    body: form,
+  })
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({})) as { error?: string; message?: string }
+    throw new Error(payload.error || payload.message || `Image upload failed: ${response.status}`)
+  }
+  return response.json() as Promise<{ data: { image: string; path: string } }>
 }
 
 export async function recordAppUsage(deviceId: string, userPhone?: string | null) {

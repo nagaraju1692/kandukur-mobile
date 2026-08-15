@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import BottomNav from './BottomNav'
 import getCategoryImage from '../utils/categoryImages'
 import MobileHeader from './MobileHeader'
 import { useLanguage } from '../context/LanguageContext'
 import { useDirectory } from '../context/DirectoryContext'
+import { useAuth } from '../context/AuthContext'
 import DirectoryState from './DirectoryState'
 import { colors } from '../ui/theme'
 
@@ -44,8 +45,17 @@ function CategoryThumbnail({ name }: { name: string }) {
 export default function Categories({ navigation }: any) {
   const { t, category: categoryLabel } = useLanguage()
   const { categories, businesses, loading, error, retry } = useDirectory()
+  const { favorites } = useAuth()
+  const [listingFilter, setListingFilter] = useState<'all' | 'withListings' | 'empty' | 'favorites'>('all')
+  const [showFilterOptions, setShowFilterOptions] = useState(false)
   const rootCategories = categories
-    .filter(category => !category.parentId)
+    .filter(category => {
+      if (category.parentId) return false
+      const childIds = categories.filter((child) => child.parentId === category.id).map((child) => child.id)
+      const categoryBusinesses = businesses.filter((business) => business.categoryId === category.id || childIds.includes(business.categoryId))
+      if (listingFilter === 'favorites') return categoryBusinesses.some((business) => favorites.includes(business.id))
+      return listingFilter === 'all' || (listingFilter === 'withListings' ? categoryBusinesses.length > 0 : categoryBusinesses.length === 0)
+    })
     .sort((first, second) => categoryPriority.indexOf(first.name) - categoryPriority.indexOf(second.name))
 
   return (
@@ -57,6 +67,9 @@ export default function Categories({ navigation }: any) {
           <Text style={styles.pageKicker}>{t('CATEGORIES', 'వర్గాలు')}</Text>
           <Text style={styles.pageTitle}>{t('Categories', 'వర్గాలు')}</Text>
         </View>
+        <Pressable style={styles.filterButton} onPress={() => setShowFilterOptions(true)} accessibilityLabel={t('Filter categories', 'Filter categories')}>
+          <Text style={styles.filterButtonText}>≡</Text>
+        </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -86,6 +99,23 @@ export default function Categories({ navigation }: any) {
           })}
         </View>
       </ScrollView>
+      <Modal visible={showFilterOptions} transparent animationType="fade" onRequestClose={() => setShowFilterOptions(false)}>
+        <Pressable style={styles.filterOverlay} onPress={() => setShowFilterOptions(false)}>
+          <View style={styles.filterMenu}>
+            <Text style={styles.filterTitle}>{t('Filter categories', 'Filter categories')}</Text>
+            {([
+              ['all', t('All categories', 'All categories')],
+              ['withListings', t('With listings', 'With listings')],
+              ['favorites', t('Favorites', 'Favorites')],
+              ['empty', t('Empty categories', 'Empty categories')],
+            ] as const).map(([value, label]) => (
+              <Pressable key={value} style={[styles.filterOption, listingFilter === value && styles.filterOptionActive]} onPress={() => { setListingFilter(value); setShowFilterOptions(false) }}>
+                <Text style={[styles.filterOptionText, listingFilter === value && styles.filterOptionTextActive]}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
       <BottomNav navigation={navigation} active="Categories" />
     </View>
   )
@@ -122,6 +152,15 @@ const styles = StyleSheet.create({
   pageHeaderCopy: {
     flex: 1,
   },
+  filterButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: '#E1D9FF' },
+  filterButtonText: { color: '#4A4AD5', fontSize: 23, fontWeight: '800', lineHeight: 25 },
+  filterOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(24, 25, 43, 0.38)' },
+  filterMenu: { padding: 18, borderTopLeftRadius: 14, borderTopRightRadius: 14, backgroundColor: '#FFF' },
+  filterTitle: { marginBottom: 8, color: '#1F2235', fontSize: 16, fontWeight: '800' },
+  filterOption: { minHeight: 46, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: '#F0F1F6', paddingHorizontal: 8 },
+  filterOptionActive: { backgroundColor: '#F0EEFF' },
+  filterOptionText: { color: '#3E4355', fontSize: 14, fontWeight: '600' },
+  filterOptionTextActive: { color: '#4F47B8', fontWeight: '800' },
   pageKicker: {
     color: '#5B52D1',
     fontSize: 10,
@@ -145,10 +184,15 @@ const styles = StyleSheet.create({
     padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
+    backgroundColor: 'rgba(255,255,255,0.82)',
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
+    borderColor: 'rgba(255,255,255,0.75)',
+    borderRadius: 16,
+    shadowColor: '#8C5B4B',
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   categoryImageWrap: {
     width: 52,
@@ -157,6 +201,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#E7E9FA',
     marginRight: 14,
+    borderWidth: 1,
+    borderColor: '#EFE0D8',
   },
   image: {
     width: '100%',

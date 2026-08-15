@@ -16,17 +16,31 @@ export default function BusinessDetails({ route, navigation }: any) {
   const { id } = route.params || {}
   const { businesses, loading, error, retry } = useDirectory()
   const business = businesses.find(item => item.id === id)
-  const { favorites, toggleFavorite, isLoggedIn } = useAuth()
+  const { favorites, toggleFavorite, isLoggedIn, isSuperAdmin, user } = useAuth()
   const { t, category: categoryLabel } = useLanguage()
   const { getReviewStats, getReviews, submitReview, loading: reviewsLoading, error: reviewsError, retry: retryReviews } = useReviews()
   const { distances, ready, ensureAddresses, location } = useNearby()
   const [showReviewForm, setShowReviewForm] = useState(false)
   const [selectedRating, setSelectedRating] = useState(0)
   const [comment, setComment] = useState('')
+  const [selectedGalleryImage, setSelectedGalleryImage] = useState<string | null>(null)
+  const galleryRef = React.useRef<ScrollView>(null)
+  const galleryIndex = React.useRef(0)
+  const galleryImages = business?.gallery || []
 
   React.useEffect(() => {
     if (business && ready) ensureAddresses([{ id: business.id, address: business.address, latitude: business.latitude, longitude: business.longitude }])
   }, [business, ready, ensureAddresses])
+
+  React.useEffect(() => {
+    galleryIndex.current = 0
+    if (galleryImages.length < 2) return
+    const interval = setInterval(() => {
+      galleryIndex.current = (galleryIndex.current + 1) % galleryImages.length
+      galleryRef.current?.scrollTo({ x: galleryIndex.current * 122, animated: true })
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [business?.id, galleryImages.length])
 
   if (!business) return <View style={styles.empty}><DirectoryState loading={loading} error={error || 'Listing not found.'} onRetry={retry} /></View>
 
@@ -47,6 +61,34 @@ export default function BusinessDetails({ route, navigation }: any) {
   const businessReviews = getReviews(business.id)
   const imageSource = getBusinessImage(business.image, business.categoryName)
 
+  const handleDelete = async () => {
+    if (!isSuperAdmin && business.submittedBy !== user?.phone) return
+    Alert.alert(
+      t('Delete listing', 'Delete listing'),
+      t('This action cannot be undone. Remove this listing?', 'This action cannot be undone. Remove this listing?'),
+      [
+        { text: t('Cancel', 'Cancel'), style: 'cancel' },
+        {
+          text: t('Delete', 'Delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://mmanakandukur-backend-dah2a4aafecacbff.indiasouthcentral-01.azurewebsites.net'}/api/businesses/${encodeURIComponent(business.id)}`, {
+                method: 'DELETE',
+                headers: { 'x-user-phone': user?.phone || '' },
+              })
+              const result = await response.json().catch(() => ({}))
+              if (!response.ok) throw new Error(result.error || 'Unable to delete listing')
+              navigation.goBack()
+            } catch (error) {
+              Alert.alert(t('Delete failed', 'Delete failed'), error instanceof Error ? error.message : t('Unable to delete this listing.', 'Unable to delete this listing.'))
+            }
+          },
+        },
+      ],
+    )
+  }
+
   return (
     <View style={styles.screen}>
       <MobileHeader navigation={navigation} />
@@ -65,7 +107,13 @@ export default function BusinessDetails({ route, navigation }: any) {
           <Text style={styles.description}>{business.description}</Text>
           <View style={styles.actions}><Pressable style={styles.secondary} onPress={call}><Text style={styles.actionIcon}>📞</Text><Text style={styles.secondaryText}>{t('Call', 'కాల్')}</Text></Pressable><Pressable style={styles.primary} onPress={openMap}><Text style={styles.actionIcon}>📍</Text><Text style={styles.primaryText}>{t('Directions', 'దిశలు')}</Text></Pressable><Pressable style={styles.secondary} onPress={share}><Text style={styles.actionIcon}>🔗</Text><Text style={styles.secondaryText}>{t('Share', 'షేర్')}</Text></Pressable><Pressable style={styles.secondary} onPress={openWhatsApp}><Text style={styles.actionIcon}>💬</Text><Text style={styles.secondaryText}>{t('WhatsApp', 'వాట్స్అప్')}</Text></Pressable><Pressable style={styles.secondary} onPress={() => isLoggedIn ? toggleFavorite(business.id) : navigation.navigate('Profile')}><Text style={styles.actionIcon}>{isFavorite ? '♥' : '♡'}</Text><Text style={styles.secondaryText}>{isFavorite ? t('Saved', 'సేవ్ చేశారు') : t('Save', 'సేవ్')}</Text></Pressable></View>
           <View style={styles.info}><Text style={styles.infoLabel}>{t('ABOUT THIS PLACE', 'ఈ ప్రదేశం గురించి')}</Text><Text style={styles.infoText}>{business.description || t('Discover everything this business has to offer.', 'ఈ వ్యాపారం అందించే సేవలను తెలుసుకోండి.')}</Text><Text style={styles.infoLabel}>{t('CONTACT INFORMATION', 'సంప్రదింపు సమాచారం')}</Text><Text style={styles.infoText}>📞 {business.phone || t('Not available', 'అందుబాటులో లేదు')}</Text><Text style={styles.infoText}>📍 {business.address}</Text>{business.website && <Pressable onPress={openWebsite}><Text style={styles.websiteLink}>🌐 {business.website}</Text></Pressable>}</View>
-          <View style={styles.sectionCard}><Text style={styles.infoLabel}>{t(`PHOTOS (${(business.gallery || []).length || 4})`, `ఫోటోలు (${(business.gallery || []).length || 4})`)}</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gallery}>{(business.gallery || []).slice(0, 4).map((image: any, index: number) => <Image key={`${business.id}-${index}`} source={getBusinessImage(image, business.categoryName)} style={styles.galleryImage} resizeMode="cover" />)}</ScrollView></View>
+          <View style={styles.sectionCard}><Text style={styles.infoLabel}>{t(`PHOTOS (${galleryImages.length})`, `ఫోటోలు (${galleryImages.length})`)}</Text><ScrollView ref={galleryRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gallery}>{galleryImages.map((image: string, index: number) => <Pressable key={`${business.id}-${index}`} onPress={() => setSelectedGalleryImage(image)}><Image source={getBusinessImage(image, business.categoryName)} style={styles.galleryImage} resizeMode="cover" /></Pressable>)}</ScrollView></View>
+          {(isSuperAdmin || business.submittedBy === user?.phone) && (
+            <View style={styles.adminActions}>
+              <Pressable style={styles.adminPrimaryButton} onPress={() => navigation.navigate('SubmitBusiness', { mode: 'edit', business })}><Text style={styles.adminPrimaryText}>{t('Edit listing', 'Edit listing')}</Text></Pressable>
+              <Pressable style={styles.adminSecondaryButton} onPress={handleDelete}><Text style={styles.adminSecondaryText}>{t('Delete', 'Delete')}</Text></Pressable>
+            </View>
+          )}
           <Pressable style={styles.reviewButton} onPress={() => isLoggedIn ? setShowReviewForm(true) : navigation.navigate('Profile')}><Text style={styles.reviewButtonText}>{t('Write a Review', 'సమీక్ష రాయండి')}</Text></Pressable>
           <View style={styles.sectionCard}><Text style={styles.infoLabel}>{t('REVIEWS', 'సమీక్షలు')} ({businessReviews.length})</Text>{reviewsLoading ? <Text style={styles.noReviews}>{t('Loading reviews…', 'సమీక్షలు లోడ్ అవుతున్నాయి…')}</Text> : reviewsError ? <><Text style={styles.noReviews}>{t('Reviews could not be loaded.', 'సమీక్షలను లోడ్ చేయలేకపోయాము.')}</Text><Pressable onPress={retryReviews}><Text style={styles.websiteLink}>{t('Retry', 'మళ్లీ ప్రయత్నించండి')}</Text></Pressable></> : businessReviews.length === 0 ? <Text style={styles.noReviews}>{t('No reviews yet.', 'ఇంకా సమీక్షలు లేవు.')}</Text> : businessReviews.slice().reverse().map((review) => <View key={review.id} style={styles.reviewItem}><Text style={styles.reviewRating}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</Text>{review.comment ? <Text style={styles.reviewComment}>{review.comment}</Text> : null}<Text style={styles.reviewDate}>{new Date(review.createdAt).toLocaleDateString()}</Text></View>)}</View>
         </View>
@@ -81,12 +129,21 @@ export default function BusinessDetails({ route, navigation }: any) {
           </View>
         </View>
       </Modal>
+      <Modal visible={Boolean(selectedGalleryImage)} transparent animationType="fade" onRequestClose={() => setSelectedGalleryImage(null)}>
+        <Pressable style={styles.imageViewerBackdrop} onPress={() => setSelectedGalleryImage(null)}>
+          {selectedGalleryImage ? <Image source={getBusinessImage(selectedGalleryImage, business.categoryName)} style={styles.imageViewerImage} resizeMode="contain" /> : null}
+          <Text style={styles.imageViewerClose}>×</Text>
+        </Pressable>
+      </Modal>
       <BottomNav navigation={navigation} active="Categories" />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
+  imageViewerBackdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, backgroundColor: 'rgba(12, 12, 20, 0.9)' },
+  imageViewerImage: { width: '100%', height: '80%' },
+  imageViewerClose: { position: 'absolute', top: 42, right: 24, color: '#FFF', fontSize: 34, lineHeight: 38 },
   screen: { flex: 1, backgroundColor: colors.background },
   ratingSummary: { marginTop: 8, color: '#D89B00', fontSize: 13, fontWeight: '800' },
   distance: { marginTop: 7, color: '#4D8052', fontSize: 12, fontWeight: '700' },
@@ -112,5 +169,5 @@ const styles = StyleSheet.create({
   hero: { height: 230, position: 'relative', backgroundColor: '#4A4AD5' }, heroImage: { width: '100%', height: '100%' }, heroShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(25, 25, 70, 0.25)' },
   backButton: { position: 'absolute', top: 18, left: 16, width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.92)' }, backButtonText: { color: '#25263A', fontSize: 30, lineHeight: 33, textAlign: 'center' },
   favoriteButton: { position: 'absolute', top: 18, right: 16, width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.9)' }, favoriteButtonText: { color: '#E34E5B', fontSize: 23 },
-  body: { padding: 20, backgroundColor: colors.background }, category: { color: '#5B55D9', fontSize: 11, fontWeight: '800', letterSpacing: 1 }, title: { marginTop: 7, color: '#2F2F41', fontSize: 25, fontWeight: '800', lineHeight: 31 }, description: { marginTop: 14, color: '#686879', fontSize: 14, lineHeight: 21 }, info: { marginTop: 16, padding: 16, borderRadius: 10, borderWidth: 1, borderColor: '#DDE2F5', backgroundColor: '#F8F9FF' }, infoLabel: { marginTop: 8, color: '#858596', fontSize: 10, fontWeight: '800', letterSpacing: 1 }, infoText: { marginTop: 5, color: '#3F3F50', fontSize: 13, lineHeight: 19 }, actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 22 }, primary: { flexBasis: '46%', flexGrow: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 7, backgroundColor: '#514BD5' }, primaryText: { color: '#FFF', fontSize: 13, fontWeight: '800' }, secondary: { flexBasis: '46%', flexGrow: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 7, borderWidth: 1, borderColor: '#DCDDEA', backgroundColor: '#F8F9FF' }, secondaryText: { color: '#514BD5', fontSize: 13, fontWeight: '800' }, actionIcon: { fontSize: 14, marginBottom: 2 }, websiteLink: { marginTop: 6, color: '#3D71D9', fontSize: 13 }, sectionCard: { marginTop: 16, padding: 16, borderRadius: 10, borderWidth: 1, borderColor: '#DDE2F5', backgroundColor: '#F8F9FF' }, serviceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }, serviceTag: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 14, color: '#514BD5', backgroundColor: '#E9E9FF', fontSize: 11, fontWeight: '700' }, gallery: { gap: 10, marginTop: 10 }, galleryImage: { width: 112, height: 84, borderRadius: 8 }, reviewButton: { marginTop: 20, marginBottom: 20, alignItems: 'center', paddingVertical: 13, borderRadius: 8, backgroundColor: '#514BD5' }, reviewButtonText: { color: '#FFF', fontSize: 14, fontWeight: '800' },
+  body: { padding: 20, backgroundColor: colors.background }, category: { color: '#5B55D9', fontSize: 11, fontWeight: '800', letterSpacing: 1 }, title: { marginTop: 7, color: '#2F2F41', fontSize: 25, fontWeight: '800', lineHeight: 31 }, description: { marginTop: 14, color: '#686879', fontSize: 14, lineHeight: 21 }, info: { marginTop: 16, padding: 16, borderRadius: 10, borderWidth: 1, borderColor: '#DDE2F5', backgroundColor: '#F8F9FF' }, infoLabel: { marginTop: 8, color: '#858596', fontSize: 10, fontWeight: '800', letterSpacing: 1 }, infoText: { marginTop: 5, color: '#3F3F50', fontSize: 13, lineHeight: 19 }, actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 22 }, primary: { flexBasis: '46%', flexGrow: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 7, backgroundColor: '#514BD5' }, primaryText: { color: '#FFF', fontSize: 13, fontWeight: '800' }, secondary: { flexBasis: '46%', flexGrow: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 7, borderWidth: 1, borderColor: '#DCDDEA', backgroundColor: '#F8F9FF' }, secondaryText: { color: '#514BD5', fontSize: 13, fontWeight: '800' }, actionIcon: { fontSize: 14, marginBottom: 2 }, websiteLink: { marginTop: 6, color: '#3D71D9', fontSize: 13 }, sectionCard: { marginTop: 16, padding: 16, borderRadius: 10, borderWidth: 1, borderColor: '#DDE2F5', backgroundColor: '#F8F9FF' }, serviceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }, serviceTag: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 14, color: '#514BD5', backgroundColor: '#E9E9FF', fontSize: 11, fontWeight: '700' }, gallery: { gap: 10, marginTop: 10 }, galleryImage: { width: 112, height: 84, borderRadius: 8 }, adminActions: { flexDirection: 'row', gap: 10, marginTop: 18 }, adminPrimaryButton: { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 8, backgroundColor: '#514BD5' }, adminPrimaryText: { color: '#FFF', fontSize: 13, fontWeight: '800' }, adminSecondaryButton: { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: '#E7C8C8', backgroundColor: '#FFF5F5' }, adminSecondaryText: { color: '#B34D5E', fontSize: 13, fontWeight: '800' }, reviewButton: { marginTop: 20, marginBottom: 20, alignItems: 'center', paddingVertical: 13, borderRadius: 8, backgroundColor: '#514BD5' }, reviewButtonText: { color: '#FFF', fontSize: 14, fontWeight: '800' },
 })

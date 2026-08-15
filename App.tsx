@@ -16,6 +16,7 @@ import Categories from './src/screens/Categories';
 import Favorites from './src/screens/Favorites';
 import Profile from './src/screens/Profile';
 import Search from './src/screens/Search';
+import Admin from './src/screens/Admin';
 import { AuthProvider } from './src/context/AuthContext';
 import { LanguageProvider } from './src/context/LanguageContext';
 import { NotificationProvider } from './src/context/NotificationContext';
@@ -75,6 +76,7 @@ function AppRoot() {
                 <Stack.Screen name="BusinessDetails" component={BusinessDetails} />
                 <Stack.Screen name="Favorites" component={Favorites} />
                 <Stack.Screen name="Profile" component={Profile} />
+                <Stack.Screen name="Admin" component={Admin} />
                 <Stack.Screen name="SubmitBusiness" component={SubmitBusiness} />
                 <Stack.Screen name="Feedback" component={Feedback} />
               </Stack.Navigator>

@@ -24,6 +24,9 @@
         "projectId": "d8947819-58a2-49fe-8376-efa481f3d6fc"
       }
     },
-    "owner": "yanamalanagarajus-team"
+    "owner": "yanamalanagarajus-team",
+    "plugins": [
+      "@react-native-community/datetimepicker"
+    ]
   }
 }

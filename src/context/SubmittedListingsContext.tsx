@@ -12,14 +12,16 @@ export type SubmittedListing = {
   phone: string
   description: string
   website: string
+  image?: string
+  gallery?: string[]
   submittedBy: string
   createdBy: string
-  status: 'Pending review' | 'Sold out'
+  status: 'Approved' | 'Pending review' | 'Rejected' | 'Sold out'
 }
 
 type SubmittedListingsValue = {
   listings: SubmittedListing[]
-  addListing: (listing: Omit<SubmittedListing, 'id' | 'status'>) => Promise<void>
+  addListing: (listing: Omit<SubmittedListing, 'id' | 'status'> & { image?: string; gallery?: string[] }) => Promise<void>
   markSoldOut: (listingId: string) => Promise<void>
 }
 

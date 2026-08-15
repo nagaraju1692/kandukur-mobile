@@ -5,7 +5,7 @@ import { fetchJson } from '../services/api';
 export type UserProfile = {
   name: string;
   phone: string;
-  role?: 'user' | 'super_admin';
+  role?: 'user' | 'admin' | 'super_admin';
   isSuperAdmin?: boolean;
 };
 
@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     favorites,
     isLoggedIn: !!user,
-    isSuperAdmin: Boolean(user?.isSuperAdmin || user?.role === 'super_admin'),
+    isSuperAdmin: Boolean(user?.isSuperAdmin || user?.role === 'admin' || user?.role === 'super_admin'),
     login,
     logout,
     toggleFavorite,
