@@ -6,7 +6,8 @@ import BottomNav from './BottomNav'
 import MobileHeader from './MobileHeader'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
-import { fetchJson, uploadAdminAnnouncementImage } from '../services/api'
+import { useSubmittedListings } from '../context/SubmittedListingsContext'
+import { AdminActivityItem, AdminSummary, fetchAdminRecentActivity, fetchAdminSummary, fetchJson, uploadAdminAnnouncementImage } from '../services/api'
 
 type AdminAnnouncement = {
   id: string
@@ -60,11 +61,15 @@ const emptyAnnouncementForm = {
 export default function Admin({ navigation }: any) {
   const { user, isSuperAdmin } = useAuth()
   const { t } = useLanguage()
-  const [activeSection, setActiveSection] = useState<'announcements' | 'businesses' | 'feedback'>('announcements')
+  const { listings: mySubmissions } = useSubmittedListings()
+  const [activeSection, setActiveSection] = useState<'announcements' | 'businesses' | 'feedback' | 'submissions' | 'analytics'>('announcements')
 
   const [announcements, setAnnouncements] = useState<AdminAnnouncement[]>([])
   const [businesses, setBusinesses] = useState<AdminBusiness[]>([])
   const [feedbackItems, setFeedbackItems] = useState<AdminFeedback[]>([])
+  const [adminSummary, setAdminSummary] = useState<AdminSummary | null>(null)
+  const [recentActivity, setRecentActivity] = useState<AdminActivityItem[]>([])
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const [listingQuery, setListingQuery] = useState('')
   const [listingStatusFilter, setListingStatusFilter] = useState<ListingStatusFilter>('All')
   const [listingCategoryFilter, setListingCategoryFilter] = useState('All categories')
@@ -126,6 +131,21 @@ export default function Admin({ navigation }: any) {
     }
     loadAdminData()
   }, [isSuperAdmin, user?.phone])
+
+  useEffect(() => {
+    if (!isSuperAdmin || activeSection !== 'analytics' || !user?.phone) return
+    setAnalyticsLoading(true)
+    Promise.all([fetchAdminSummary(user.phone), fetchAdminRecentActivity(user.phone)])
+      .then(([summaryResponse, activityResponse]) => {
+        setAdminSummary(summaryResponse.data)
+        setRecentActivity(activityResponse.data)
+      })
+      .catch(() => {
+        setAdminSummary(null)
+        setRecentActivity([])
+      })
+      .finally(() => setAnalyticsLoading(false))
+  }, [isSuperAdmin, activeSection, user?.phone])
 
   const ensureAdminSession = () => {
     if (user?.phone) return true
@@ -459,17 +479,19 @@ export default function Admin({ navigation }: any) {
           </View>
         </View>
 
-        <View style={styles.sectionTabs}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sectionTabs}>
           {[
             { key: 'announcements', label: t('Announcements', '????????????????') },
             { key: 'businesses', label: t('Listings', '????????????') },
             { key: 'feedback', label: t('Feedback', '???????????') },
+            { key: 'submissions', label: t('My submissions', 'నా సమర్పణలు') },
+            { key: 'analytics', label: t('Analytics', 'Analytics') },
           ].map((tab) => (
-            <Pressable key={tab.key} style={[styles.tabButton, activeSection === tab.key && styles.tabActive]} onPress={() => setActiveSection(tab.key as 'announcements' | 'businesses' | 'feedback')}>
+            <Pressable key={tab.key} style={[styles.tabButton, activeSection === tab.key && styles.tabActive]} onPress={() => setActiveSection(tab.key as 'announcements' | 'businesses' | 'feedback' | 'submissions' | 'analytics')}>
               <Text style={[styles.tabText, activeSection === tab.key && styles.tabTextActive]}>{tab.label}</Text>
             </Pressable>
           ))}
-        </View>
+        </ScrollView>
 
         {activeSection === 'announcements' && (
           <>
@@ -653,6 +675,55 @@ export default function Admin({ navigation }: any) {
             ))}
           </View>
         )}
+
+        {activeSection === 'submissions' && (
+          <View style={styles.listCard}>
+            <Text style={styles.formTitle}>{t('My submissions', 'నా సమర్పణలు')}</Text>
+            {mySubmissions.length === 0 ? <Text style={styles.emptyCopy}>{t('You have not submitted any listings yet.', 'You have not submitted any listings yet.')}</Text> : mySubmissions.map((item) => (
+              <View key={item.id} style={styles.largeRow}>
+                <View style={styles.rowCopy}>
+                  <Text style={styles.rowTitle}>{item.name}</Text>
+                  <Text style={styles.rowDetail}>{item.categoryName} � {item.status}</Text>
+                  <Text style={styles.rowDetail}>{item.address}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {activeSection === 'analytics' && (
+          <View style={styles.listCard}>
+            <Text style={styles.formTitle}>{t('Analytics', 'Analytics')}</Text>
+            {analyticsLoading ? <Text style={styles.emptyCopy}>{t('Loading...', '???? ????????...')}</Text> : (
+              <>
+                <View style={styles.statsGrid}>
+                  {[
+                    { label: t('Installed devices (30d)', 'Installed devices (30d)'), value: adminSummary?.installed_devices },
+                    { label: t('Total users', 'Total users'), value: adminSummary?.total_users },
+                    { label: t('Total businesses', 'Total businesses'), value: adminSummary?.total_businesses },
+                    { label: t('Total reviews', 'Total reviews'), value: adminSummary?.total_reviews },
+                    { label: t('Total feedback', 'Total feedback'), value: adminSummary?.total_feedback },
+                    { label: t('Super admins', 'Super admins'), value: adminSummary?.super_admins },
+                  ].map((stat) => (
+                    <View key={stat.label} style={styles.statCard}>
+                      <Text style={styles.statValue}>{stat.value ?? '—'}</Text>
+                      <Text style={styles.statLabel}>{stat.label}</Text>
+                    </View>
+                  ))}
+                </View>
+                <Text style={[styles.formTitle, styles.recentActivityTitle]}>{t('Recent activity', 'Recent activity')}</Text>
+                {recentActivity.length === 0 ? <Text style={styles.emptyCopy}>{t('No recent activity.', 'No recent activity.')}</Text> : recentActivity.map((item, index) => (
+                  <View key={`${item.type}-${item.entity_id}-${index}`} style={styles.row}>
+                    <View style={styles.rowCopy}>
+                      <Text style={styles.rowTitle}>{item.type} · {item.label}</Text>
+                      <Text style={styles.rowDetail}>{new Date(item.created_at).toLocaleString()}</Text>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
+          </View>
+        )}
       </ScrollView>
       {Platform.OS === 'web' && webDateInput ? (
         <View style={styles.webDateOverlay}>
@@ -747,7 +818,7 @@ const styles = StyleSheet.create({
   kicker: { color: '#5B52D1', fontSize: 11, fontWeight: '800', letterSpacing: 1 },
   title: { marginTop: 2, color: '#1F2235', fontSize: 23, fontWeight: '800' },
   sectionTabs: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  tabButton: { flex: 1, minHeight: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 9, borderWidth: 1, borderColor: '#D7DBED', backgroundColor: '#FFF' },
+  tabButton: { minHeight: 36, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, borderRadius: 9, borderWidth: 1, borderColor: '#D7DBED', backgroundColor: '#FFF' },
   tabActive: { borderColor: '#7166E5', backgroundColor: '#F0EEFF' },
   tabText: { color: '#656E87', fontSize: 12, fontWeight: '700' },
   tabTextActive: { color: '#4F47B8' },
@@ -809,6 +880,11 @@ const styles = StyleSheet.create({
   editText: { color: '#4F59B7', fontSize: 11, fontWeight: '800' },
   deleteBtn: { borderWidth: 1, borderColor: '#E8C9CC', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#FFF6F7' },
   deleteText: { color: '#B34D5E', fontSize: 11, fontWeight: '800' },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  statCard: { minWidth: '30%', flexGrow: 1, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#E3E5F1', backgroundColor: '#F8F9FF' },
+  statValue: { color: '#1F2235', fontSize: 20, fontWeight: '800' },
+  statLabel: { marginTop: 4, color: '#656E87', fontSize: 11, fontWeight: '600' },
+  recentActivityTitle: { marginTop: 16 },
   webDateOverlay: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(22, 24, 41, 0.35)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, zIndex: 55 },
   webDateCard: { width: '100%', maxWidth: 460, borderRadius: 14, borderWidth: 1, borderColor: '#E3E5F1', backgroundColor: '#FFF', padding: 16 },
   webDateTitle: { color: '#1F2235', fontSize: 18, fontWeight: '800' },

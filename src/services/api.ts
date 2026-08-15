@@ -228,4 +228,28 @@ export async function recordAppUsage(deviceId: string, userPhone?: string | null
   }
 }
 
+export type AdminSummary = {
+  total_users: number
+  super_admins: number
+  total_businesses: number
+  installed_devices: number
+  total_reviews: number
+  total_feedback: number
+}
+
+export type AdminActivityItem = {
+  type: 'review' | 'feedback' | 'usage'
+  entity_id: string
+  label: string
+  created_at: string
+}
+
+export async function fetchAdminSummary(userPhone: string) {
+  return fetchJson<{ data: AdminSummary }>('/api/admin/summary', undefined, userPhone)
+}
+
+export async function fetchAdminRecentActivity(userPhone: string) {
+  return fetchJson<{ data: AdminActivityItem[] }>('/api/admin/recent-activity', undefined, userPhone)
+}
+
 export default fetchJson
