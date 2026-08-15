@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker'
@@ -147,9 +147,18 @@ export default function Admin({ navigation }: any) {
       .finally(() => setAnalyticsLoading(false))
   }, [isSuperAdmin, activeSection, user?.phone])
 
+  // Show messages as an in-app banner instead of a native/browser alert popup.
+  const [toast, setToast] = useState<{ title: string; message: string } | null>(null)
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const showAlert = (title: string, message: string) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
+    setToast({ title, message })
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 3500)
+  }
+
   const ensureAdminSession = () => {
     if (user?.phone) return true
-    Alert.alert(t('Session expired', 'Session expired'), t('Please sign in again to continue.', 'Please sign in again to continue.'))
+    showAlert(t('Session expired', 'Session expired'), t('Please sign in again to continue.', 'Please sign in again to continue.'))
     return false
   }
 
@@ -207,7 +216,7 @@ export default function Admin({ navigation }: any) {
     if (!webDateInput) return
     const normalized = webDateInput.value.trim()
     if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized) || Number.isNaN(new Date(normalized).getTime())) {
-      Alert.alert(t('Invalid date', 'Invalid date'), t('Please enter date as YYYY-MM-DD.', 'Please enter date as YYYY-MM-DD.'))
+      showAlert(t('Invalid date', 'Invalid date'), t('Please enter date as YYYY-MM-DD.', 'Please enter date as YYYY-MM-DD.'))
       return
     }
     updateAnnouncementForm(webDateInput.field, normalized)
@@ -224,7 +233,7 @@ export default function Admin({ navigation }: any) {
     if (!ensureAdminSession()) return
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
-      Alert.alert(t('Permission needed', '?????? ?????'), t('Please allow gallery access to upload image.', '?????? ???????? ????????? ??????? ?????? ???????.'))
+      showAlert(t('Permission needed', '?????? ?????'), t('Please allow gallery access to upload image.', '?????? ???????? ????????? ??????? ?????? ???????.'))
       return
     }
 
@@ -242,10 +251,10 @@ export default function Admin({ navigation }: any) {
         mimeType: selectedAsset.mimeType,
       }, user.phone)
       updateAnnouncementForm('image', uploaded.data.image)
-      Alert.alert(t('Image uploaded', '?????? ???????? ??????'), t('Image uploaded successfully.', '?????? ?????????? ???????? ??????.'))
+      showAlert(t('Image uploaded', '?????? ???????? ??????'), t('Image uploaded successfully.', '?????? ?????????? ???????? ??????.'))
     } catch (error) {
       const message = error instanceof Error ? error.message : t('Unable to upload image now.', '????????? ?????? ???????? ???????????.')
-      Alert.alert(t('Upload failed', '???????? ?????????'), message)
+      showAlert(t('Upload failed', '???????? ?????????'), message)
     } finally {
       setUploadingImage(false)
     }
@@ -264,17 +273,17 @@ export default function Admin({ navigation }: any) {
     }
 
     if (!payload.title || !payload.detail || !payload.description || !payload.type || !payload.startDate || !payload.endDate) {
-      Alert.alert(t('Missing fields', '??????? ???????? ????'), t('Title, detail, description, type, start date, and end date are required.', 'Title, detail, description, type, start date, and end date are required.'))
+      showAlert(t('Missing fields', '??????? ???????? ????'), t('Title, detail, description, type, start date, and end date are required.', 'Title, detail, description, type, start date, and end date are required.'))
       return
     }
     const startMillis = new Date(payload.startDate).getTime()
     const endMillis = new Date(payload.endDate).getTime()
     if (Number.isNaN(startMillis) || Number.isNaN(endMillis)) {
-      Alert.alert(t('Invalid dates', '??????? ??????'), t('Enter valid start and end dates.', '?????? ?????? ??????? ???? ???????? ?????? ????????.'))
+      showAlert(t('Invalid dates', '??????? ??????'), t('Enter valid start and end dates.', '?????? ?????? ??????? ???? ???????? ?????? ????????.'))
       return
     }
     if (startMillis > endMillis) {
-      Alert.alert(t('Date range error', '?????? ?????? ???????'), t('End date should be after start date.', '??????? ?????? ???????? ?????? ????? ???? ??????.'))
+      showAlert(t('Date range error', '?????? ?????? ???????'), t('End date should be after start date.', '??????? ?????? ???????? ?????? ????? ???? ??????.'))
       return
     }
 
@@ -288,7 +297,7 @@ export default function Admin({ navigation }: any) {
         }, user.phone)
         setAnnouncements((current) => current.map((item) => item.id === editingAnnouncementId ? response.data : item))
         await loadAdminData()
-        Alert.alert(t('Updated', '???????? ??????'), t('Announcement updated successfully.', '????????????? ?????????? ???????? ??????.'))
+        showAlert(t('Updated', '???????? ??????'), t('Announcement updated successfully.', '????????????? ?????????? ???????? ??????.'))
       } else {
         const response = await fetchJson<{ data: AdminAnnouncement }>('/api/admin/announcements', {
           method: 'POST',
@@ -297,14 +306,14 @@ export default function Admin({ navigation }: any) {
         }, user.phone)
         setAnnouncements((current) => [response.data, ...current])
         await loadAdminData()
-        Alert.alert(t('Added', '????????????'), t('Announcement added successfully.', '????????????? ?????????? ????????????.'))
+        showAlert(t('Added', '????????????'), t('Announcement added successfully.', '????????????? ?????????? ????????????.'))
       }
       setShowAnnouncementForm(false)
       setEditingAnnouncementId(null)
       setAnnouncementForm(emptyAnnouncementForm)
     } catch (error) {
       const message = error instanceof Error ? error.message : t('Unable to save announcement now.', '????????? ????????????? ???? ???????????.')
-      Alert.alert(t('Save failed', '???? ?????????'), message)
+      showAlert(t('Save failed', '???? ?????????'), message)
     } finally {
       setSavingAnnouncement(false)
     }
@@ -337,10 +346,10 @@ export default function Admin({ navigation }: any) {
       await loadAdminData()
       if (editingAnnouncementId === announcement.id) resetAnnouncementForm()
       setWebDeleteTarget(null)
-      Alert.alert(t('Deleted', 'Deleted'), t('Announcement deleted successfully.', 'Announcement deleted successfully.'))
+      showAlert(t('Deleted', 'Deleted'), t('Announcement deleted successfully.', 'Announcement deleted successfully.'))
     } catch (error) {
       const message = error instanceof Error ? error.message : t('Unable to delete announcement now.', 'Unable to delete announcement now.')
-      Alert.alert(t('Delete failed', 'Delete failed'), message)
+      showAlert(t('Delete failed', 'Delete failed'), message)
     } finally {
       setDeletingAnnouncementId(null)
     }
@@ -384,7 +393,7 @@ export default function Admin({ navigation }: any) {
       }, user.phone)
       setBusinesses((current) => current.map((item) => item.id === businessId ? response.data : item))
     } catch {
-      Alert.alert(t('Update failed', '???????? ?????????'), t('Unable to update listing status now.', '????????? ????????? ??????? ???????? ???????????.'))
+      showAlert(t('Update failed', '???????? ?????????'), t('Unable to update listing status now.', '????????? ????????? ??????? ???????? ???????????.'))
     } finally {
       setBusyBusinessId(null)
     }
@@ -396,10 +405,10 @@ export default function Admin({ navigation }: any) {
       await fetchJson<{ success: boolean }>(`/api/businesses/${encodeURIComponent(business.id)}`, { method: 'DELETE' }, user?.phone)
       setBusinesses((current) => current.filter((item) => item.id !== business.id))
       setWebBusinessDeleteTarget(null)
-      Alert.alert(t('Deleted', 'Deleted'), t('Listing deleted successfully.', 'Listing deleted successfully.'))
+      showAlert(t('Deleted', 'Deleted'), t('Listing deleted successfully.', 'Listing deleted successfully.'))
     } catch (error) {
       const message = error instanceof Error ? error.message : t('Unable to delete listing now.', 'Unable to delete listing now.')
-      Alert.alert(t('Delete failed', 'Delete failed'), message)
+      showAlert(t('Delete failed', 'Delete failed'), message)
     } finally {
       setBusyBusinessId(null)
     }
@@ -444,7 +453,7 @@ export default function Admin({ navigation }: any) {
               await fetchJson<{ success: boolean }>(`/api/admin/feedback/${encodeURIComponent(item.id)}`, { method: 'DELETE' }, user.phone)
               setFeedbackItems((current) => current.filter((feedback) => feedback.id !== item.id))
             } catch {
-              Alert.alert(t('Delete failed', '???????? ?????????'), t('Unable to delete feedback now.', '????????? ??????????? ???????????????.'))
+              showAlert(t('Delete failed', '???????? ?????????'), t('Unable to delete feedback now.', '????????? ??????????? ???????????????.'))
             } finally {
               setBusyFeedbackId(null)
             }
@@ -470,6 +479,12 @@ export default function Admin({ navigation }: any) {
   return (
     <View style={styles.screen}>
       <MobileHeader navigation={navigation} />
+      {toast && (
+        <View style={styles.toast}>
+          <Text style={styles.toastTitle}>{toast.title}</Text>
+          <Text style={styles.toastMessage}>{toast.message}</Text>
+        </View>
+      )}
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.headingRow}>
           <Pressable style={styles.back} onPress={() => navigation.goBack()}><Text style={styles.backText}>?</Text></Pressable>
@@ -811,6 +826,9 @@ export default function Admin({ navigation }: any) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#EAEAF9' },
+  toast: { marginHorizontal: 16, marginTop: 10, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#CFE0D8', backgroundColor: '#EAF7EF' },
+  toastTitle: { color: '#1F2235', fontSize: 13, fontWeight: '800' },
+  toastMessage: { marginTop: 2, color: '#3E4355', fontSize: 12 },
   content: { padding: 16, paddingBottom: 120 },
   headingRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginRight: 10, borderRadius: 20, backgroundColor: '#FFFFFF' },
