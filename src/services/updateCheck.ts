@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import Constants from 'expo-constants'
 
 // Update to match your GitHub repo that hosts APK releases.
@@ -5,6 +6,8 @@ const GITHUB_OWNER = 'nagaraju1692'
 const GITHUB_REPO = 'Kandukur-mobile-apk'
 const RELEASES_API_URL = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`
 const DISMISSED_VERSION_KEY = 'mana-kandukur-dismissed-update-version'
+const LAST_CHECK_KEY = 'mana-kandukur-last-update-check'
+const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000 // avoid hitting GitHub's unauthenticated rate limit
 
 export type AppUpdateInfo = {
   version: string
@@ -33,6 +36,10 @@ export function getCurrentAppVersion(): string {
 }
 
 export async function fetchLatestUpdate(): Promise<AppUpdateInfo | null> {
+  const lastCheck = await AsyncStorage.getItem(LAST_CHECK_KEY)
+  if (lastCheck && Date.now() - Number(lastCheck) < CHECK_INTERVAL_MS) return null
+  await AsyncStorage.setItem(LAST_CHECK_KEY, String(Date.now()))
+
   const response = await fetch(RELEASES_API_URL, {
     headers: { Accept: 'application/vnd.github+json' },
   })
