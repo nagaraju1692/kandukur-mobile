@@ -9,6 +9,8 @@ export type SubmittedListing = {
   categoryName: string
   categoryId: string
   address: string
+  latitude?: number | null
+  longitude?: number | null
   phone: string
   description: string
   website: string

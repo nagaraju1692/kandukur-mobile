@@ -70,22 +70,34 @@ function fallbackCoordinatesByAddress(address: string): { latitude: number; long
   return null
 }
 
-export async function geocodeAddress(address: string): Promise<{ latitude: number; longitude: number } | null> {
-  const fallback = fallbackCoordinatesByAddress(address)
-  if (!address || !address.trim()) return null
+// Nominatim's free API allows at most 1 request/second. Serialize every caller through
+// one global queue so concurrent screens can't collectively exceed that limit.
+let geocodeQueue: Promise<unknown> = Promise.resolve()
+const GEOCODE_MIN_INTERVAL_MS = 1100
 
-  try {
-    const params = new URLSearchParams({ format: 'jsonv2', limit: '1', q: `${address}, Andhra Pradesh, India` })
-    const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-      headers: { Accept: 'application/json', 'User-Agent': 'ManaKandukurApp/1.0' },
-    })
-    if (!response.ok) return fallback
-    const results = await response.json()
-    if (!Array.isArray(results) || !results[0]) return fallback
-    return { latitude: Number(results[0].lat), longitude: Number(results[0].lon) }
-  } catch {
-    return fallback
-  }
+export function geocodeAddress(address: string): Promise<{ latitude: number; longitude: number } | null> {
+  const fallback = fallbackCoordinatesByAddress(address)
+  if (!address || !address.trim()) return Promise.resolve(null)
+
+  const run = geocodeQueue.then(async () => {
+    try {
+      const params = new URLSearchParams({ format: 'jsonv2', limit: '1', q: `${address}, Andhra Pradesh, India` })
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+        headers: { Accept: 'application/json', 'User-Agent': 'ManaKandukurApp/1.0' },
+      })
+      if (!response.ok) return fallback
+      const results = await response.json()
+      if (!Array.isArray(results) || !results[0]) return fallback
+      return { latitude: Number(results[0].lat), longitude: Number(results[0].lon) }
+    } catch {
+      return fallback
+    } finally {
+      await new Promise((resolve) => setTimeout(resolve, GEOCODE_MIN_INTERVAL_MS))
+    }
+  })
+
+  geocodeQueue = run.catch(() => undefined)
+  return run
 }
 
 export function buildGoogleMapsDirectionsUrl(
@@ -215,13 +227,19 @@ export async function uploadAdminBusinessImage(
   return response.json() as Promise<{ data: { image: string; path: string } }>
 }
 
-export async function recordAppUsage(deviceId: string, userPhone?: string | null) {
+export async function recordAppUsage(deviceId: string, options?: { userPhone?: string | null; userName?: string | null; appVersion?: string | null; platform?: string | null }) {
   if (!apiBaseUrl) return
   try {
     await fetchJson<{ data: { id: string; deviceId: string; visitedAt: string } }>('/api/usage', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ deviceId, userPhone: userPhone || null }),
+      body: JSON.stringify({
+        deviceId,
+        userPhone: options?.userPhone || null,
+        userName: options?.userName || null,
+        appVersion: options?.appVersion || null,
+        platform: options?.platform || null,
+      }),
     })
   } catch {
     // Ignore analytics failures so app does not break for anonymous usage tracking.

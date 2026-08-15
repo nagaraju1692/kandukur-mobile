@@ -8,7 +8,7 @@ import { useDirectory } from '../context/DirectoryContext'
 import MobileHeader from './MobileHeader'
 import BottomNav from './BottomNav'
 import { colors } from '../ui/theme'
-import { uploadAdminBusinessImage } from '../services/api'
+import { geocodeAddress, uploadAdminBusinessImage } from '../services/api'
 
 function normalizeGallery(gallery: unknown): string[] {
   if (Array.isArray(gallery)) return gallery.filter((image): image is string => typeof image === 'string' && Boolean(image.trim()))
@@ -117,10 +117,16 @@ export default function SubmitBusiness({ navigation, route }: any) {
     setIsSubmitting(true)
     setSubmitError('')
     try {
+      const trimmedAddress = form.address.trim()
+      // Geocode once here so the app never needs to re-geocode this address at runtime.
+      const addressChanged = !editingBusiness || editingBusiness.address !== trimmedAddress
+      const coordinates = addressChanged ? await geocodeAddress(trimmedAddress) : null
       const payload = {
         ...form,
         submittedBy: user.phone,
         createdBy: user.phone,
+        latitude: coordinates?.latitude ?? null,
+        longitude: coordinates?.longitude ?? null,
         gallery: form.galleryInput.split(',').map((value) => value.trim()).filter(Boolean),
       }
       if (editingBusiness && (isSuperAdmin || editingBusiness.submittedBy === user.phone)) {
@@ -135,6 +141,9 @@ export default function SubmitBusiness({ navigation, route }: any) {
             categoryId: payload.categoryId,
             categoryName: payload.categoryName,
             address: payload.address,
+            // Only touch coordinates when the address actually changed, so an edit never
+            // wipes out previously-geocoded coordinates for an unrelated field change.
+            ...(addressChanged ? { latitude: payload.latitude, longitude: payload.longitude } : {}),
             phone: payload.phone,
             description: payload.description,
             website: payload.website,

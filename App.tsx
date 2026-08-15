@@ -1,8 +1,9 @@
 import 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import React, { useEffect } from 'react';
-import { Alert, Linking } from 'react-native';
+import { Alert, Linking, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -18,7 +19,8 @@ import Favorites from './src/screens/Favorites';
 import Profile from './src/screens/Profile';
 import Search from './src/screens/Search';
 import Admin from './src/screens/Admin';
-import { AuthProvider } from './src/context/AuthContext';
+import About from './src/screens/About';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { LanguageProvider } from './src/context/LanguageContext';
 import { NotificationProvider } from './src/context/NotificationContext';
 import { ReviewProvider } from './src/context/ReviewContext';
@@ -34,7 +36,9 @@ enableScreens();
 
 const Stack = createNativeStackNavigator();
 
-function AppRoot() {
+function UsageTracker() {
+  const { user } = useAuth();
+
   useEffect(() => {
     let cancelled = false
 
@@ -47,7 +51,12 @@ function AppRoot() {
         }
 
         if (!cancelled) {
-          await recordAppUsage(deviceId)
+          await recordAppUsage(deviceId, {
+            userPhone: user?.phone,
+            userName: user?.name,
+            appVersion: Constants.expoConfig?.version,
+            platform: Platform.OS,
+          })
         }
       } catch {
         // Ignore analytics errors to keep app startup non-blocking.
@@ -55,6 +64,15 @@ function AppRoot() {
     }
 
     registerUsage()
+    return () => { cancelled = true }
+  }, [user?.phone])
+
+  return null
+}
+
+function AppRoot() {
+  useEffect(() => {
+    let cancelled = false
 
     const checkForUpdate = async () => {
       try {
@@ -86,6 +104,7 @@ function AppRoot() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
+        <UsageTracker />
         <DirectoryProvider>
           <LanguageProvider>
             <NotificationProvider>
@@ -103,6 +122,7 @@ function AppRoot() {
                 <Stack.Screen name="Favorites" component={Favorites} />
                 <Stack.Screen name="Profile" component={Profile} />
                 <Stack.Screen name="Admin" component={Admin} />
+                <Stack.Screen name="About" component={About} />
                 <Stack.Screen name="SubmitBusiness" component={SubmitBusiness} />
                 <Stack.Screen name="Feedback" component={Feedback} />
               </Stack.Navigator>

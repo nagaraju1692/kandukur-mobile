@@ -147,17 +147,12 @@ export default function Profile({ navigation }: any) {
         </View>
       </View>
 
-      {listings.length > 0 && <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('My submissions', 'నా సమర్పణలు')}</Text>
-        <View style={styles.list}>{listings.map((listing) => <View key={listing.id} style={styles.row}><Text style={styles.rowIcon}>＋</Text><View style={styles.submissionCopy}><Text style={styles.rowText}>{listing.name}</Text><Text style={styles.submissionStatus}>{listing.status}</Text></View></View>)}</View>
-      </View>}
-
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('More', 'మరిన్ని')}</Text>
         <View style={styles.list}>
           {[
             { label: t('Submit a business', 'వ్యాపారాన్ని సమర్పించండి'), icon: '＋', action: () => navigation.navigate('SubmitBusiness') },
-            { label: t('About Mana Kandukur', 'మనా కందుకూరు గురించి'), icon: 'i', action: () => navigation.navigate('Home') },
+            { label: t('About Mana Kandukur', 'మనా కందుకూరు గురించి'), icon: 'i', action: () => navigation.navigate('About') },
             { label: t('Feedback & complaints', 'అభిప్రాయం మరియు ఫిర్యాదులు'), icon: '?', action: () => navigation.navigate('Feedback') },
             { label: t('Logout', 'లాగ్ అవుట్'), icon: '↪', action: handleLogout, danger: true },
           ].map((item) => (
