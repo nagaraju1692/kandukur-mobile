@@ -32,13 +32,19 @@ export async function fetchWeather(): Promise<WeatherReport> {
   const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`)
   if (!response.ok) throw new Error(`Weather request failed: ${response.status}`)
   const data = await response.json()
+  const hourlyTimes: string[] = data.hourly?.time || []
+  const firstUpcomingHour = hourlyTimes.findIndex((time) => new Date(time).getTime() >= new Date(data.current.time).getTime())
+  const hourlyWindow = hourlyTimes.slice(Math.max(0, firstUpcomingHour), Math.max(0, firstUpcomingHour) + 24)
   return {
     temp: `${Math.round(data.current.temperature_2m)}°C`,
     condition: weatherConditions[data.current.weather_code] || 'Current conditions',
     humidity: `${Math.round(data.current.relative_humidity_2m)}% humidity`,
     wind: `${Math.round(data.current.wind_speed_10m)} km/h wind`,
     updatedAt: data.current.time,
-    hourly: (data.hourly?.time || []).slice(0, 12).map((time: string, index: number) => ({ time, temp: Math.round(data.hourly.temperature_2m[index]), code: data.hourly.weather_code[index] })),
+    hourly: hourlyWindow.map((time) => {
+      const sourceIndex = hourlyTimes.indexOf(time)
+      return { time, temp: Math.round(data.hourly.temperature_2m[sourceIndex]), code: data.hourly.weather_code[sourceIndex] }
+    }),
     daily: (data.daily?.time || []).map((date: string, index: number) => ({ date, max: Math.round(data.daily.temperature_2m_max[index]), min: Math.round(data.daily.temperature_2m_min[index]), code: data.daily.weather_code[index] })),
   }
 }

@@ -1,12 +1,18 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useDirectory } from './DirectoryContext'
+import { fetchWeather, WeatherReport } from '../services/api'
 
 export type MobileNotification = {
   id: string
   title: string
   message: string
   time: string
+  type: string
+  announcementTitle: string
+  detail: string
+  description: string
+  image?: string
 }
 
 type NotificationContextValue = {
@@ -16,47 +22,101 @@ type NotificationContextValue = {
 
 const NotificationContext = createContext<NotificationContextValue | undefined>(undefined)
 const dismissedKey = 'mana-kandukur-mobile-dismissed-notifications'
+const rainCodes = new Set([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99])
+
+function formatRainTime(time: string | Date) {
+  return new Date(time).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })
+}
+
+function createRainNotification(weather: WeatherReport): MobileNotification | null {
+  const rainStart = weather.hourly.findIndex((hour) => rainCodes.has(hour.code))
+  if (rainStart < 0) return null
+
+  let rainEnd = rainStart
+  while (rainEnd + 1 < weather.hourly.length && rainCodes.has(weather.hourly[rainEnd + 1].code)) rainEnd += 1
+  const start = weather.hourly[rainStart]
+  const end = weather.hourly[rainEnd]
+  const dateKey = start.time.slice(0, 10)
+  const rainEndTime = new Date(new Date(end.time).getTime() + 60 * 60 * 1000)
+  const timeRange = `${formatRainTime(start.time)} to ${formatRainTime(rainEndTime)}`
+
+  return {
+    id: `weather-rain-${dateKey}`,
+    title: 'Rain alert',
+    message: `Rain may occur in Kandukur between ${timeRange}.`,
+    time: 'Weather alert',
+    type: 'Weather',
+    announcementTitle: 'Rain expected in Kandukur',
+    detail: `Possible rain: ${timeRange}`,
+    description: 'If you are going outside, carry an umbrella. Prefer a car when possible; if travelling by bike, use rain gear and ride carefully.',
+    image: 'https://images.unsplash.com/photo-1501691223387-dd0500403074?auto=format&fit=crop&w=1200&q=80',
+  }
+}
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<MobileNotification[]>([])
   const [dismissed, setDismissed] = useState<string[]>([])
+  const [dismissedLoaded, setDismissedLoaded] = useState(false)
+  const [rainNotification, setRainNotification] = useState<MobileNotification | null>(null)
   const { announcements } = useDirectory()
 
   useEffect(() => {
     let active = true
     AsyncStorage.getItem(dismissedKey).then((value) => {
-      if (!active || !value) return
+      if (!active) return
       try {
-        const parsed = JSON.parse(value)
+        const parsed = value ? JSON.parse(value) : []
         if (Array.isArray(parsed)) setDismissed(parsed)
       } catch {
         setDismissed([])
+      } finally {
+        if (active) setDismissedLoaded(true)
       }
-    }).catch(() => undefined)
+    }).catch(() => {
+      if (active) setDismissedLoaded(true)
+    })
     return () => { active = false }
   }, [])
 
   useEffect(() => {
+    if (!dismissedLoaded) return
     AsyncStorage.setItem(dismissedKey, JSON.stringify(dismissed)).catch(() => undefined)
-  }, [dismissed])
+  }, [dismissed, dismissedLoaded])
 
   useEffect(() => {
-    if (dismissed.length === 0) {
-      setNotifications(announcements.map((announcement) => ({
-        id: `announcement-${announcement.id}`,
-        title: announcement.type === 'movie' ? 'New movie update' : 'New shop opening',
-        message: `${announcement.title} · ${announcement.detail}.`,
-        time: 'New',
-      })))
-    } else {
-      setNotifications(announcements.filter((announcement) => !dismissed.includes(`announcement-${announcement.id}`)).map((announcement) => ({
-        id: `announcement-${announcement.id}`,
-        title: announcement.type === 'movie' ? 'New movie update' : 'New shop opening',
-        message: `${announcement.title} · ${announcement.detail}.`,
-        time: 'New',
-      })))
+    let active = true
+    const loadRainAlert = async () => {
+      try {
+        const weather = await fetchWeather()
+        if (active) setRainNotification(createRainNotification(weather))
+      } catch {
+        if (active) setRainNotification(null)
+      }
     }
-  }, [announcements, dismissed])
+    loadRainAlert()
+    const refresh = setInterval(loadRainAlert, 30 * 60 * 1000)
+    return () => {
+      active = false
+      clearInterval(refresh)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!dismissedLoaded) return
+    const announcementNotifications = announcements.filter((announcement) => !dismissed.includes(`announcement-${announcement.id}`)).map((announcement) => ({
+      id: `announcement-${announcement.id}`,
+      title: announcement.type === 'movie' ? 'New movie update' : 'New shop opening',
+      message: `${announcement.title} · ${announcement.detail}.`,
+      time: 'New',
+      type: announcement.type,
+      announcementTitle: announcement.title,
+      detail: announcement.detail,
+      description: announcement.description,
+      image: announcement.image,
+    }))
+    const weatherNotifications = rainNotification && !dismissed.includes(rainNotification.id) ? [rainNotification] : []
+    setNotifications([...weatherNotifications, ...announcementNotifications])
+  }, [announcements, dismissed, dismissedLoaded, rainNotification])
 
   const clearNotifications = async () => {
     const ids = notifications.map((item) => item.id)

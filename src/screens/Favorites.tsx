@@ -15,8 +15,10 @@ const favoriteIcons: Record<string, string> = {
   'Beauty clinics': '✧', 'Real Estate': '🏘️', Agriculture: '🌾',
   'Food & Meat Markets': '🥬', 'Rental Transport': '🚚', 'Tourist Places': '🗺️',
   'Rental Houses': '🏠', 'Construction Materials': '🧱', 'Government Offices': '🏛️',
+  'Buy & Sell': '🏷️', 'Cars for Sale': '🚗', 'Bikes for Sale': '🏍️', 'Tractors for Sale': '🚜', 'Other Items for Sale': '🏷️',
+  'Common Utilities': '🧰', 'ATM Centers': '🏧', 'Petrol Pumps': '⛽', 'Gas Centers': '🔥', 'EV Charging Stations': '🔌', 'Public Toilets': '🚻',
   'Cold Storages': '❄️', 'Manpower Services': '🛠️', 'Show Rooms': '🏬',
-  'Bike & Car Mechanics': '🔧', 'Plots for Sale': '📐', 'Property Agents': '🤝',
+  'Bike & Car Mechanics': '🔧', 'Plot for Sale': '📐', 'House or Apartment for Sale': '🏠', 'Land for Sale': '🌱',
   'Tobacco Boards': '🌿', 'Vegetable Markets': '🥕', 'Fish Markets': '🐟',
   'Fruit Markets': '🍎', 'Mutton Shops': '🍖', 'Chicken Shops': '🍗', 'Sweet Shops': '🍬',
   'Cars for Rent': '🚗', 'Autos for Rent': '🛺', 'Lorries for Rent': '🚛', 'Tractors for Rent': '🚜', 'JCBs for Rent': '🏗️', 'RealEstate': '▣',
@@ -26,7 +28,7 @@ const favoriteIcons: Record<string, string> = {
 
 export default function Favorites({ navigation }: any) {
   const { favorites, isLoggedIn, user } = useAuth()
-  const { t, category: categoryLabel } = useLanguage()
+  const { t, category: categoryLabel, businessName } = useLanguage()
   const { distances, ready, ensureAddresses, sortNearest } = useNearby()
   const { businesses } = useDirectory()
   const savedBusinesses = businesses.filter((business) => favorites.includes(business.id))
@@ -64,9 +66,9 @@ export default function Favorites({ navigation }: any) {
             <Pressable key={business.id} style={styles.businessCard} onPress={() => navigation.navigate('BusinessDetails', { id: business.id })}>
               <View style={styles.businessIcon}><Text style={styles.businessIconText}>{favoriteIcons[business.categoryName || ''] || business.categoryName?.charAt(0) || '📍'}</Text></View>
               <View style={styles.businessBody}>
-                <Text style={styles.businessName}>{business.name}</Text>
+                <Text style={styles.businessName}>{businessName(business.name, business.nameTe)}</Text>
                 <Text style={styles.businessCategory}>{categoryLabel(business.categoryName)}</Text>
-                <Text style={styles.businessAddress}>{business.address}</Text><Text style={styles.businessDistance}>{(distances[business.id] ?? distances[business.address]) !== undefined ? `${((distances[business.id] ?? distances[business.address]) as number).toFixed(1)} km away` : 'Finding distance…'}</Text>
+                <Text style={styles.businessAddress}>{business.address}</Text><Text style={styles.businessDistance}>{(distances[business.id] ?? distances[business.address]) !== undefined ? `${((distances[business.id] ?? distances[business.address]) as number).toFixed(1)} ${t('km away', 'కి.మీ దూరంలో')}` : t('Finding distance…', 'దూరాన్ని కనుగొంటున్నాము…')}</Text>
               </View>
               <Text style={styles.arrow}>›</Text>
             </Pressable>

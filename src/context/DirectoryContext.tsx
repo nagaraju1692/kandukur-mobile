@@ -5,12 +5,17 @@ export type Category = { id: string; name: string; parentId: string | null }
 export type Business = {
   id: string
   name: string
+  nameTe?: string
   categoryId: string
   categoryName: string
   address: string
   latitude?: number | null
   longitude?: number | null
   phone?: string
+  ownerName?: string
+  rooms?: string
+  price?: string
+  facing?: string
   website?: string
   description?: string
   image?: string

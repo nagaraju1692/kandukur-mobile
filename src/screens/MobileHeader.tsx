@@ -51,7 +51,7 @@ export default function MobileHeader({ navigation }: { navigation: any }) {
           style={styles.notificationButton}
           hitSlop={12}
           accessibilityRole="button"
-          accessibilityLabel="Open notifications"
+          accessibilityLabel={t('Open notifications', 'నోటిఫికేషన్‌లను తెరవండి')}
           onPress={() => setShowNotifications(true)}
         >
           <Text style={styles.bell}>🔔</Text>
@@ -73,7 +73,7 @@ export default function MobileHeader({ navigation }: { navigation: any }) {
               </View>
             </View>
             <ScrollView style={styles.notificationList} contentContainerStyle={styles.notificationListContent}>
-              {notifications.length === 0 ? <Text style={styles.emptyNotifications}>No new notifications.</Text> : notifications.map((notification, index) => (
+              {notifications.length === 0 ? <Text style={styles.emptyNotifications}>{t('No new notifications.', 'కొత్త నోటిఫికేషన్‌లు లేవు.')}</Text> : notifications.map((notification, index) => (
                 <Pressable
                   key={`${notification.title}-${index}`}
                   style={styles.notificationCard}
@@ -92,15 +92,17 @@ export default function MobileHeader({ navigation }: { navigation: any }) {
       <Modal visible={selectedNotification !== null} transparent animationType="fade" onRequestClose={() => setSelectedNotification(null)}>
         <View style={styles.notificationBackdrop}>
           {selectedNotification && (
-            <View style={styles.updateModal}>
-              <View style={styles.updateModalTop}>
-                <Text style={styles.updateBadge}>Update</Text>
+            <View style={styles.announcementModal}>
+              {selectedNotification.image ? <Image source={{ uri: selectedNotification.image }} style={styles.announcementImage} resizeMode="cover" /> : null}
+              <View style={styles.announcementBody}>
+                <View style={styles.updateModalTop}>
+                <Text style={styles.updateBadge}>{selectedNotification.type}</Text>
                 <Pressable style={styles.updateClose} onPress={() => setSelectedNotification(null)}><Text style={styles.updateCloseText}>×</Text></Pressable>
               </View>
-              <Text style={styles.updateTitle}>{selectedNotification.title}</Text>
-              <Text style={styles.updateMeta}>{selectedNotification.time}</Text>
-              <Text style={styles.updateDescription}>{selectedNotification.message}</Text>
-              <Text style={styles.updateSource}>{selectedNotification.title}</Text>
+              <Text style={styles.updateTitle}>{selectedNotification.announcementTitle}</Text>
+              <Text style={styles.updateMeta}>{selectedNotification.detail}</Text>
+              <Text style={styles.updateDescription}>{selectedNotification.description}</Text>
+              </View>
             </View>
           )}
         </View>
@@ -147,7 +149,9 @@ const styles = StyleSheet.create({
   notificationCardMessage: { marginTop: 5, color: '#5D554F', fontSize: 12, lineHeight: 17 },
   notificationCardTime: { marginTop: 8, color: '#8A7C73', fontSize: 11 },
   emptyNotifications: { padding: 24, color: '#77716D', fontSize: 13, textAlign: 'center' },
-  updateModal: { width: '100%', maxWidth: 420, padding: 20, borderRadius: 22, backgroundColor: '#FFFDFB' },
+  announcementModal: { width: '100%', maxWidth: 420, overflow: 'hidden', borderRadius: 22, backgroundColor: '#FFFDFB' },
+  announcementImage: { width: '100%', height: 210, backgroundColor: '#222' },
+  announcementBody: { padding: 20 },
   updateModalTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   updateBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 12, color: '#42647D', backgroundColor: '#DDF0FA', fontSize: 11, fontWeight: '800' },
   updateClose: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: '#F3F0EB' },

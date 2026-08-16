@@ -25,10 +25,15 @@ function normalizeGallery(gallery: unknown): string[] {
 function createListingForm(business: any, phone?: string) {
   return {
     name: business?.name || '',
+    nameTe: business?.nameTe || '',
+    ownerName: business?.ownerName || business?.name || '',
     categoryId: business?.categoryId || '',
     categoryName: business?.categoryName || '',
     address: business?.address || '',
     phone: business?.phone || phone || '',
+    rooms: business?.rooms || '',
+    price: business?.price || '',
+    facing: business?.facing || '',
     description: business?.description || '',
     website: business?.website || '',
     image: business?.image || '',
@@ -36,14 +41,25 @@ function createListingForm(business: any, phone?: string) {
   }
 }
 
+const marketplaceCategoryNames = new Set(['Real Estate', 'Rental Transport', 'Construction Materials', 'Buy & Sell'])
+
 export default function SubmitBusiness({ navigation, route }: any) {
   const { user, isSuperAdmin } = useAuth()
   const { t, category: categoryLabel } = useLanguage()
   const { addListing } = useSubmittedListings()
-  const { categories, businesses } = useDirectory()
+  const { categories, businesses, refreshBusinesses } = useDirectory()
   const routeBusiness = route?.params?.business
+  const preselectedCategory = categories.find((category) => category.id === route?.params?.categoryId)
+  const listingCategory = preselectedCategory || categories.find((category) => category.id === routeBusiness?.categoryId)
+  const listingParentCategory = categories.find((category) => category.id === listingCategory?.parentId)
+  const isMarketplaceListing = Boolean(listingCategory && (marketplaceCategoryNames.has(listingCategory.name) || marketplaceCategoryNames.has(listingParentCategory?.name || '')))
+  const isPropertyListing = listingCategory?.name === 'Real Estate' || listingParentCategory?.name === 'Real Estate'
+  const selectedCategoryParentId = preselectedCategory?.parentId || preselectedCategory?.id
+  const availableCategories = preselectedCategory
+    ? categories.filter((category) => category.parentId === selectedCategoryParentId)
+    : categories
   const editingBusiness = businesses.find((business) => business.id === routeBusiness?.id) || routeBusiness
-  const [form, setForm] = useState(() => createListingForm(editingBusiness, user?.phone))
+  const [form, setForm] = useState(() => createListingForm(editingBusiness, isMarketplaceListing ? undefined : user?.phone))
   const [errors, setErrors] = useState<Partial<Record<keyof typeof form, string>>>({})
   const [submitted, setSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -51,16 +67,24 @@ export default function SubmitBusiness({ navigation, route }: any) {
   const [submitError, setSubmitError] = useState('')
 
   useEffect(() => {
-    if (user?.phone) setForm((current) => ({ ...current, phone: user.phone }))
-  }, [user?.phone])
+    if (user?.phone && !isMarketplaceListing) setForm((current) => ({ ...current, phone: user.phone }))
+  }, [user?.phone, isMarketplaceListing])
 
   useEffect(() => {
     if (!editingBusiness) return
-    setForm(createListingForm(editingBusiness, user?.phone))
-  }, [editingBusiness?.id, editingBusiness?.image, JSON.stringify(normalizeGallery(editingBusiness?.gallery)), user?.phone])
+    setForm(createListingForm(editingBusiness, isMarketplaceListing ? undefined : user?.phone))
+  }, [editingBusiness?.id, editingBusiness?.image, JSON.stringify(normalizeGallery(editingBusiness?.gallery)), user?.phone, isMarketplaceListing])
+
+  useEffect(() => {
+    if (editingBusiness || !preselectedCategory) return
+    setForm((current) => current.categoryId ? current : { ...current, categoryId: preselectedCategory.id, categoryName: preselectedCategory.name })
+  }, [editingBusiness, preselectedCategory?.id])
 
   const update = (field: keyof typeof form, value: string) => setForm((current) => ({ ...current, [field]: value }))
   const galleryImages = form.galleryInput.split(',').map((value) => value.trim()).filter(Boolean)
+  const formFields: Array<[keyof typeof form, string]> = isMarketplaceListing
+    ? [['name', 'Title'], ['phone', isPropertyListing ? 'Owner / agent mobile number' : 'Seller mobile number'], ['address', 'Area / location'], ['price', 'Price'], ...(isPropertyListing ? [['facing', 'Plot facing (East, West, North, or South)'] as [keyof typeof form, string]] : [])]
+    : [['name', 'Business name'], ['address', 'Location / address'], ['phone', 'Mobile number'], ['website', 'Website (optional)']]
 
   const pickListingImages = async (target: 'cover' | 'gallery') => {
     if (!user?.phone || !isSuperAdmin) return
@@ -101,7 +125,9 @@ export default function SubmitBusiness({ navigation, route }: any) {
 
   const validate = () => {
     const nextErrors: Partial<Record<keyof typeof form, string>> = {}
-    if (!/^[A-Za-z0-9][A-Za-z0-9 .,'-]{1,49}$/.test(form.name.trim())) nextErrors.name = t('Enter a valid business name.', 'Enter a valid business name.')
+    if (isMarketplaceListing) {
+      if (!form.price.trim()) nextErrors.price = t('Enter the price.', 'Enter the price.')
+    } else if (!/^[A-Za-z0-9][A-Za-z0-9 .,'-]{1,49}$/.test(form.name.trim())) nextErrors.name = t('Enter a valid business name.', 'Enter a valid business name.')
     if (!form.categoryId) nextErrors.categoryName = t('Choose a category.', 'Choose a category.')
     if (form.address.trim().length < 5) nextErrors.address = t('Enter a complete location.', 'Enter a complete location.')
     if (!/^\d{10,11}$/.test(form.phone.replace(/\D/g, ''))) nextErrors.phone = t('Enter a valid 10- or 11-digit contact number.', 'Enter a valid 10- or 11-digit contact number.')
@@ -123,6 +149,8 @@ export default function SubmitBusiness({ navigation, route }: any) {
       const coordinates = addressChanged ? await geocodeAddress(trimmedAddress) : null
       const payload = {
         ...form,
+        phone: form.phone,
+        description: isMarketplaceListing ? form.description.trim() || `For sale: ${form.name.trim()}. Price: ${form.price.trim()}.${form.facing ? ` Facing: ${form.facing}.` : ''}` : form.description,
         submittedBy: user.phone,
         createdBy: user.phone,
         latitude: coordinates?.latitude ?? null,
@@ -138,6 +166,7 @@ export default function SubmitBusiness({ navigation, route }: any) {
           },
           body: JSON.stringify({
             name: payload.name,
+            nameTe: payload.nameTe,
             categoryId: payload.categoryId,
             categoryName: payload.categoryName,
             address: payload.address,
@@ -146,6 +175,10 @@ export default function SubmitBusiness({ navigation, route }: any) {
             ...(addressChanged ? { latitude: payload.latitude, longitude: payload.longitude } : {}),
             phone: payload.phone,
             description: payload.description,
+            ownerName: isMarketplaceListing ? '' : payload.ownerName,
+            rooms: isMarketplaceListing ? '' : payload.rooms,
+            price: payload.price,
+            facing: payload.facing,
             website: payload.website,
             image: payload.image,
             gallery: payload.gallery,
@@ -155,6 +188,7 @@ export default function SubmitBusiness({ navigation, route }: any) {
           const result = await response.json().catch(() => ({}))
           throw new Error(result.error || 'Unable to update listing.')
         }
+        await refreshBusinesses()
       } else {
         await addListing({ ...payload, submittedBy: user.phone, createdBy: user.phone })
       }
@@ -170,7 +204,7 @@ export default function SubmitBusiness({ navigation, route }: any) {
     <View style={styles.screen}>
       <MobileHeader navigation={navigation} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.headingRow}><Pressable style={styles.back} onPress={() => navigation.goBack()}><Text style={styles.backText}>←</Text></Pressable><View><Text style={styles.kicker}>{t('DIRECTORY', 'DIRECTORY')}</Text><Text style={styles.title}>{t('Submit a business', 'Submit a business')}</Text></View></View>
+        <View style={styles.headingRow}><Pressable style={styles.back} onPress={() => navigation.goBack()}><Text style={styles.backText}>←</Text></Pressable><View><Text style={styles.kicker}>{t('DIRECTORY', 'డైరెక్టరీ')}</Text><Text style={styles.title}>{isMarketplaceListing ? t('Post an item', 'వస్తువును పోస్ట్ చేయండి') : t('Submit a business', 'వ్యాపారాన్ని సమర్పించండి')}</Text></View></View>
         {!user ? (
           <View style={styles.success}><Text style={styles.successTitle}>{t('Sign in required', 'Sign in required')}</Text><Text style={styles.successCopy}>{t('Please sign in from Profile before submitting a local business.', 'Please sign in from Profile before submitting a local business.')}</Text><Pressable style={styles.primary} onPress={() => navigation.navigate('Profile')}><Text style={styles.primaryText}>{t('Open Profile', 'Open Profile')}</Text></Pressable></View>
         ) : submitted ? (
@@ -178,8 +212,9 @@ export default function SubmitBusiness({ navigation, route }: any) {
         ) : (
           <View style={styles.formCard}>
             <Text style={styles.intro}>{editingBusiness ? t('Update this listing and refresh the images.', 'Update this listing and refresh the images.') : t('Add your shop or service so local people can find you.', 'Add your shop or service so local people can find you.')}</Text>
-            {([['name', 'Business name'], ['address', 'Location / address'], ['phone', 'Mobile number'], ['website', 'Website (optional)']] as const).map(([field, label]) => <View key={field} style={styles.field}><Text style={styles.fieldLabel}>{t(label, label)}{field !== 'website' ? ' *' : ''}</Text><TextInput style={[styles.input, errors[field] && styles.inputError]} placeholder={t(label, label)} placeholderTextColor="#888" value={form[field]} onChangeText={(value) => update(field, value)} keyboardType={field === 'phone' ? 'phone-pad' : field === 'website' ? 'url' : 'default'} autoCapitalize={field === 'website' ? 'none' : 'words'} />{errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}</View>)}
-            <View style={styles.field}><Text style={styles.fieldLabel}>{t('Category', 'Category')} *</Text><View style={styles.categoryOptions}>{categories.map((category) => <Pressable key={category.id} style={[styles.categoryOption, form.categoryId === category.id && styles.categoryOptionActive]} onPress={() => setForm((current) => ({ ...current, categoryId: category.id, categoryName: category.name }))}><Text style={styles.categoryOptionText}>{categoryLabel(category.name)}</Text></Pressable>)}</View>{errors.categoryName && <Text style={styles.errorText}>{errors.categoryName}</Text>}</View>
+            {formFields.map(([field, label]) => <View key={field} style={styles.field}><Text style={styles.fieldLabel}>{t(label, ({ name: 'పేరు', phone: 'మొబైల్ నంబర్', address: 'ప్రాంతం / స్థానం', price: 'ధర', facing: 'ప్లాట్ ముఖదిశ', website: 'వెబ్‌సైట్ (ఐచ్ఛికం)' } as Record<string, string>)[field] || label)}{field !== 'website' && field !== 'facing' ? ' *' : ''}</Text><TextInput style={[styles.input, errors[field] && styles.inputError]} placeholder={t(label, ({ name: 'పేరు నమోదు చేయండి', phone: 'మొబైల్ నంబర్ నమోదు చేయండి', address: 'ప్రాంతం / స్థానం నమోదు చేయండి', price: 'ధర నమోదు చేయండి', facing: 'ప్లాట్ ముఖదిశ నమోదు చేయండి', website: 'వెబ్‌సైట్ నమోదు చేయండి' } as Record<string, string>)[field] || label)} placeholderTextColor="#888" value={form[field]} onChangeText={(value) => update(field, value)} keyboardType={field === 'phone' ? 'phone-pad' : field === 'price' ? 'numeric' : field === 'website' ? 'url' : 'default'} autoCapitalize={field === 'website' ? 'none' : 'words'} />{errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}</View>)}
+            {isSuperAdmin && <View style={styles.field}><Text style={styles.fieldLabel}>{t('Telugu display name (optional)', 'తెలుగు ప్రదర్శన పేరు (ఐచ్ఛికం)')}</Text><TextInput style={styles.input} placeholder={t('Enter the Telugu business name', 'తెలుగు వ్యాపార పేరు నమోదు చేయండి')} placeholderTextColor="#888" value={form.nameTe} onChangeText={(value) => update('nameTe', value)} /></View>}
+            <View style={styles.field}><Text style={styles.fieldLabel}>{t('Category', 'Category')} *</Text><View style={styles.categoryOptions}>{availableCategories.map((category) => <Pressable key={category.id} style={[styles.categoryOption, form.categoryId === category.id && styles.categoryOptionActive]} onPress={() => setForm((current) => ({ ...current, categoryId: category.id, categoryName: category.name }))}><Text style={styles.categoryOptionText}>{categoryLabel(category.name)}</Text></Pressable>)}</View>{errors.categoryName && <Text style={styles.errorText}>{errors.categoryName}</Text>}</View>
             {isSuperAdmin ? <>
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>{t('Main photo', 'Main photo')}</Text>
@@ -191,11 +226,11 @@ export default function SubmitBusiness({ navigation, route }: any) {
                 {galleryImages.length > 0 ? <View style={styles.galleryGrid}>{galleryImages.map((imageUrl) => <View key={imageUrl} style={styles.galleryPreview}><Image source={{ uri: imageUrl }} style={styles.galleryImage} /><Pressable style={styles.galleryRemove} onPress={() => removeGalleryImage(imageUrl)}><Text style={styles.galleryRemoveText}>×</Text></Pressable></View>)}</View> : null}
                 <Pressable style={[styles.photoButton, (isUploadingImages || galleryImages.length >= 10) && styles.disabled]} disabled={isUploadingImages || galleryImages.length >= 10} onPress={() => pickListingImages('gallery')}><Text style={styles.photoButtonText}>{isUploadingImages ? t('Uploading...', 'Uploading...') : t('Add gallery photos', 'Add gallery photos')}</Text></Pressable>
               </View>
-            </> : <>
+            </> : !isMarketplaceListing && <>
               <View style={styles.field}><Text style={styles.fieldLabel}>{t('Main image URL', 'Main image URL')}</Text><TextInput style={[styles.input, errors.image && styles.inputError]} placeholder={t('Paste a direct image URL', 'Paste a direct image URL')} placeholderTextColor="#888" value={form.image} onChangeText={(value) => update('image', value)} autoCapitalize="none" />{errors.image && <Text style={styles.errorText}>{errors.image}</Text>}</View>
               <View style={styles.field}><Text style={styles.fieldLabel}>{t('Gallery image URLs', 'Gallery image URLs')}</Text><TextInput style={[styles.input, styles.multiline]} placeholder={t('Separate URLs with commas', 'Separate URLs with commas')} placeholderTextColor="#888" value={form.galleryInput} onChangeText={(value) => update('galleryInput', value)} multiline autoCapitalize="none" /></View>
             </>}
-            <View style={styles.field}><Text style={styles.fieldLabel}>{t('Description', 'Description')} *</Text><TextInput style={[styles.input, styles.multiline, errors.description && styles.inputError]} placeholder={t('Describe your products or services', 'Describe your products or services')} placeholderTextColor="#888" value={form.description} onChangeText={(value) => update('description', value)} multiline />{errors.description && <Text style={styles.errorText}>{errors.description}</Text>}</View>
+            {!isMarketplaceListing && <View style={styles.field}><Text style={styles.fieldLabel}>{t('Description', 'Description')} *</Text><TextInput style={[styles.input, styles.multiline, errors.description && styles.inputError]} placeholder={t('Describe your products or services', 'Describe your products or services')} placeholderTextColor="#888" value={form.description} onChangeText={(value) => update('description', value)} multiline />{errors.description && <Text style={styles.errorText}>{errors.description}</Text>}</View>}
             {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
             <Pressable style={[styles.primary, isSubmitting && styles.disabled]} disabled={isSubmitting} onPress={submit}><Text style={styles.primaryText}>{isSubmitting ? t(editingBusiness ? 'Updating...' : 'Submitting...', editingBusiness ? 'Updating...' : 'Submitting...') : t(editingBusiness ? 'Update listing' : 'Submit listing', editingBusiness ? 'Update listing' : 'Submit listing')}</Text></Pressable>
             <Text style={styles.note}>{t('Admins can choose, add, replace, or remove cover and gallery photos.', 'Admins can choose, add, replace, or remove cover and gallery photos.')}</Text>

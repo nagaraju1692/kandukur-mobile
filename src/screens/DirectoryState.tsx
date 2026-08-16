@@ -1,15 +1,17 @@
 import React from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { colors, spacing } from '../ui/theme'
+import { useLanguage } from '../context/LanguageContext'
 
 export default function DirectoryState({ loading, error, onRetry }: { loading: boolean; error: string | null; onRetry: () => void }) {
+  const { t } = useLanguage()
   if (!loading && !error) return null
   return (
     <View style={styles.container}>
       {loading ? <ActivityIndicator size="large" color={colors.primary} /> : <Text style={styles.icon}>!</Text>}
-      <Text style={styles.title}>{loading ? 'Loading local listings…' : 'We could not load the directory'}</Text>
-      {!loading && <Text style={styles.message}>{error || 'Check your connection and try again.'}</Text>}
-      {!loading && <Pressable style={styles.button} onPress={onRetry}><Text style={styles.buttonText}>Retry</Text></Pressable>}
+      <Text style={styles.title}>{loading ? t('Loading local listings…', 'స్థానిక లిస్టింగ్‌లు లోడ్ అవుతున్నాయి…') : t('We could not load the directory', 'డైరెక్టరీని లోడ్ చేయలేకపోయాము')}</Text>
+      {!loading && <Text style={styles.message}>{error || t('Check your connection and try again.', 'మీ కనెక్షన్‌ను తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.')}</Text>}
+      {!loading && <Pressable style={styles.button} onPress={onRetry}><Text style={styles.buttonText}>{t('Retry', 'మళ్లీ ప్రయత్నించండి')}</Text></Pressable>}
     </View>
   )
 }

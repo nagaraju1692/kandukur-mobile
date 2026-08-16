@@ -11,13 +11,15 @@ import { colors } from '../ui/theme'
 
 const icons: Record<string, string> = {
   Education: '🎓', Hospitals: '✚', 'Medical shops': '✦', Restaurants: '⌂',
-  Lodges: '▣', 'Bus stand': '▤', 'Police station': '⌁', Temples: '◉',
-  Banks: '₹', 'Movie Theaters': '▶', 'Shopping clothes': '◈', 'Retail marts': '▦',
+  Lodges: '▣', 'Bus stand': '🚌', 'Police station': '🚔', Temples: '🛕',
+  Banks: '🏦', 'Movie Theaters': '▶', 'Shopping clothes': '◈', 'Retail marts': '🛒',
   'Beauty clinics': '✧', 'RealEstate': '▣', 'Agricultural info': '🌾',
   'Real Estate': '🏘️', Agriculture: '🌾', 'Food & Meat Markets': '🥬', 'Rental Transport': '🚚',
   'Tourist Places': '🗺️', 'Rental Houses': '🏠', 'Construction Materials': '🧱', 'Government Offices': '🏛️',
+  'Buy & Sell': '🏷️', 'Cars for Sale': '🚗', 'Bikes for Sale': '🏍️', 'Tractors for Sale': '🚜', 'Other Items for Sale': '🏷️',
+  'Common Utilities': '🧰', 'ATM Centers': '🏧', 'Petrol Pumps': '⛽', 'Gas Centers': '🔥', 'EV Charging Stations': '🔌', 'Public Toilets': '🚻',
   'Cold Storages': '❄️', 'Manpower Services': '🛠️', 'Show Rooms': '🏬', 'Bike & Car Mechanics': '🔧',
-  'Plots for Sale': '📐', 'Property Agents': '🤝', 'Tobacco Boards': '🌿', 'Vegetable Markets': '🥕',
+  'Plot for Sale': '📐', 'House or Apartment for Sale': '🏠', 'Land for Sale': '🌱', 'Tobacco Boards': '🌿', 'Vegetable Markets': '🥕',
   'Fish Markets': '🐟', 'Fruit Markets': '🍎', 'Mutton Shops': '🍖', 'Chicken Shops': '🍗', 'Sweet Shops': '🍬',
   'Cars for Rent': '🚗', 'Autos for Rent': '🛺', 'Lorries for Rent': '🚛', 'Tractors for Rent': '🚜', 'JCBs for Rent': '🏗️',
   'Rallapadu Reservoir': '🌊', Malakonda: '⛰️', Swagameswaram: '🛕', Sand: '⛱️', Kankara: '🪨', Cement: '🏗️', Bricks: '🧱',
@@ -30,6 +32,8 @@ const icons: Record<string, string> = {
 const categoryPriority = [
   'Education', 'Hospitals', 'Medical shops', 'Restaurants', 'Real Estate', 'Agriculture',
   'Food & Meat Markets', 'Rental Transport', 'Rental Houses', 'Construction Materials',
+  'Buy & Sell',
+  'Common Utilities',
   'Training Institutions', 'Government Offices', 'Manpower Services', 'Show Rooms',
   'Bike & Car Mechanics', 'Tourist Places', 'Cold Storages', 'Lodges', 'Bus stand',
   'Police station', 'Temples', 'Banks', 'Beauty clinics', 'Movie Theaters', 'Shopping clothes',
@@ -37,9 +41,11 @@ const categoryPriority = [
 ]
 
 function CategoryThumbnail({ name }: { name: string }) {
-  const [source, setSource] = useState(getCategoryImage(name))
-  const fallback = getCategoryImage()
-  return <Image source={{ uri: source }} style={styles.image} resizeMode="cover" onError={() => source !== fallback && setSource(fallback)} />
+  const [imageFailed, setImageFailed] = useState(false)
+  if (imageFailed) {
+    return <View style={styles.categoryIconFallback}><Text style={styles.categoryIconText}>{icons[name] || '📌'}</Text></View>
+  }
+  return <Image source={{ uri: getCategoryImage(name) }} style={styles.image} resizeMode="cover" onError={() => setImageFailed(true)} />
 }
 
 export default function Categories({ navigation }: any) {
@@ -208,6 +214,8 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  categoryIconFallback: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF2EA' },
+  categoryIconText: { fontSize: 26 },
   cardBody: { flex: 1,
   },
   name: {

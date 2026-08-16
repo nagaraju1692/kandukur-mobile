@@ -17,17 +17,20 @@ const subcategoryIcons: Record<string, string> = {
   Education: '🎓', 'Degree colleges': '🎓', 'Engineering colleges': '🎓', Intermediate: '🎓', 'Polytechnic colleges': '🎓', Schools: '🎓', Hospitals: '✚', 'Medical shops': '✦', Restaurants: '⌂', Lodges: '▣', 'Bus stand': '▤',
   'Police station': '⌁', Temples: '◉', Banks: '₹', 'Movie Theaters': '▶', 'Shopping clothes': '◈', 'Retail marts': '▦',
   'Beauty clinics': '✧', 'Real Estate': '🏘️', Agriculture: '🌾', 'Food & Meat Markets': '🥬', 'Rental Transport': '🚚',
-  'Tourist Places': '🗺️', 'Rental Houses': '🏠', 'Construction Materials': '🧱', 'Government Offices': '🏛️',
+  'Tourist Places': '🗺️', 'Rental Houses': '🏠', 'Construction Materials': '🧱', 'Government Offices': '🏛️', 'Buy & Sell': '🏷️',
+  'Common Utilities': '🧰', 'ATM Centers': '🏧', 'Petrol Pumps': '⛽', 'Gas Centers': '🔥', 'EV Charging Stations': '🔌', 'Public Toilets': '🚻',
   'Cold Storages': '❄️', 'Manpower Services': '🛠️', 'Show Rooms': '🏬', 'Bike & Car Mechanics': '🔧',
-  'Plots for Sale': '📐', 'Property Agents': '🤝', 'Tobacco Boards': '🌿', 'Vegetable Markets': '🥕',
+  'Plot for Sale': '📐', 'House or Apartment for Sale': '🏠', 'Land for Sale': '🌱', 'Tobacco Boards': '🌿', 'Vegetable Markets': '🥕',
   'Fish Markets': '🐟', 'Fruit Markets': '🍎', 'Mutton Shops': '🍖', 'Chicken Shops': '🍗', 'Sweet Shops': '🍬',
-  'Cars for Rent': '🚗', 'Autos for Rent': '🛺', 'Lorries for Rent': '🚛', 'Tractors for Rent': '🚜', 'JCBs for Rent': '🏗️',
+  'Cars for Rent': '🚗', 'Autos for Rent': '🛺', 'Lorries for Rent': '🚛', 'Tractors for Rent': '🚜', 'JCBs for Rent': '🏗️', 'Cars for Sale': '🚗', 'Bikes for Sale': '🏍️', 'Tractors for Sale': '🚜', 'Other Items for Sale': '🏷️',
   'Rallapadu Reservoir': '🌊', Malakonda: '⛰️', Swagameswaram: '🛕', Sand: '⛱️', Kankara: '🪨', Cement: '🏗️', Bricks: '🧱',
   'MRO Office': '🏢', 'Municipality Office': '🏛️', 'Registration Office': '📄', Mestri: '👷', Plumber: '🔧', Electricians: '⚡',
   'Tiles Work': '◼️', 'False Ceiling': '🏠', 'Bore Points': '💧', 'Bike Show Rooms': '🏍️', 'Car Show Rooms': '🚘', 'Vehicle Wash': '🚿',
   'Computer Training': '💻', 'Spoken English': '🗣️', 'Driving Schools': '🚗', 'Skill Development': '🧰',
   'Training Institutions': '🎓', 'RealEstate': '▣', 'Agricultural info': '🌾', 'School': '🎓', 'College': '🎓',
 }
+
+const directPostingCategoryNames = new Set(['Real Estate', 'Rental Transport', 'Construction Materials', 'Buy & Sell'])
 
 const getSubcategoryIcon = (name: string) => {
   const trimmed = (name || '').trim()
@@ -40,7 +43,7 @@ const getSubcategoryIcon = (name: string) => {
 }
 
 export default function Businesses({ navigation, route }: any) {
-  const { t, category: categoryLabel } = useLanguage()
+  const { t, category: categoryLabel, businessName } = useLanguage()
   const { favorites, toggleFavorite, isLoggedIn, user } = useAuth()
   const { getReviewStats } = useReviews()
   const { distances, ready, ensureAddresses, sortNearest, location } = useNearby()
@@ -51,6 +54,9 @@ export default function Businesses({ navigation, route }: any) {
   const [distanceFilter, setDistanceFilter] = useState(20)
   const categoryId = route.params?.categoryId || null
   const category = categories.find(item => item.id === categoryId)
+  const parentCategory = categories.find(item => item.id === category?.parentId)
+  const supportsDirectPosting = Boolean(category && (directPostingCategoryNames.has(category.name) || directPostingCategoryNames.has(parentCategory?.name || '')))
+  const isBuyAndSellCategory = category?.name === 'Buy & Sell' || parentCategory?.name === 'Buy & Sell'
   const subcategoryIds = categoryId ? categories.filter(item => item.parentId === categoryId).map(item => item.id) : []
   const allBusinesses: any[] = businesses
   const selectedBusinesses: any[] = allBusinesses.filter(
@@ -113,7 +119,7 @@ export default function Businesses({ navigation, route }: any) {
       <View style={styles.subHeader}>
         <Pressable style={styles.headerBack} onPress={() => navigation.goBack()}><Text style={styles.headerBackText}>←</Text></Pressable>
         <View style={styles.headerCopy}><Text style={styles.headerKicker}>{t('DIRECTORY', 'డైరెక్టరీ')}</Text><Text style={styles.headerTitle}>{categoryLabel(category?.name || t('All Listings', 'అన్ని లిస్టింగ్‌లు'))}</Text></View>
-        <Text style={styles.headerCount}>{selectedBusinesses.length} {t('Listings', 'లిస్టింగ్‌లు')}</Text>
+        {supportsDirectPosting ? <Pressable style={styles.postButton} onPress={() => navigation.navigate('SubmitBusiness', { categoryId })}><Text style={styles.postButtonText}>+</Text></Pressable> : <Text style={styles.headerCount}>{selectedBusinesses.length} {t('Listings', 'లిస్టింగ్‌లు')}</Text>}
       </View>
 
       <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
@@ -143,12 +149,13 @@ export default function Businesses({ navigation, route }: any) {
           >
             <View style={styles.cardMain}><View style={styles.businessImageWrap}><Image source={getBusinessImage(business.image, business.categoryName)} style={styles.businessImage} resizeMode="cover" /></View>
             <View style={styles.cardBody}>
-              <View style={styles.cardTitleRow}><Text style={styles.cardTitle}>{business.name}</Text><Pressable style={styles.cardIconButton} onPress={() => isLoggedIn ? toggleFavorite(business.id) : navigation.navigate('Profile')}><Text style={styles.favorite}>{favorites.includes(business.id) ? '♥' : '♡'}</Text></Pressable><Pressable style={styles.cardIconButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.address)}`)}><Text style={styles.pin}>📍</Text></Pressable></View>
+              <View style={styles.cardTitleRow}><Text style={styles.cardTitle}>{businessName(business.name, business.nameTe)}</Text><Pressable style={styles.cardIconButton} onPress={() => isLoggedIn ? toggleFavorite(business.id) : navigation.navigate('Profile')}><Text style={styles.favorite}>{favorites.includes(business.id) ? '♥' : '♡'}</Text></Pressable><Pressable style={styles.cardIconButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.address)}`)}><Text style={styles.pin}>📍</Text></Pressable></View>
               <View style={styles.ratingRow}><Text style={styles.rating}>{getReviewStats(business.id).rating.toFixed(1)}</Text><Text style={styles.stars}>★★★★★</Text><Text style={styles.reviews}>({getReviewStats(business.id).count})</Text><Text style={styles.typePill}>{categoryLabel(business.categoryName)}</Text></View>
-              <Text style={styles.cardPhone}>{business.phone || 'N/A'}</Text>
+              {supportsDirectPosting && <><Text style={styles.marketplacePrice}>Price: {business.price || 'Not specified'}</Text><Text style={styles.marketplaceRooms}>{isBuyAndSellCategory ? 'Seller' : 'Owner / agent'}: {business.phone}</Text>{business.facing ? <Text style={styles.marketplaceRooms}>Facing: {business.facing}</Text> : null}</>}
+              {!supportsDirectPosting && <Text style={styles.cardPhone}>{business.phone || 'N/A'}</Text>}
               {business.status === 'Sold out' && <Text style={[styles.openStatus, styles.soldOutStatus]}>{t('Sold out', 'అమ్ముడైంది')}</Text>}
               <Text style={styles.cardAddress}>{business.address}</Text>
-              <Text style={styles.cardDistance}>{(distances[business.id] ?? distances[business.address]) !== undefined ? `📍 ${((distances[business.id] ?? distances[business.address]) as number).toFixed(1)} km away` : '📍 Finding distance…'}</Text>
+              <Text style={styles.cardDistance}>{(distances[business.id] ?? distances[business.address]) !== undefined ? `📍 ${((distances[business.id] ?? distances[business.address]) as number).toFixed(1)} ${t('km away', 'కి.మీ దూరంలో')}` : `📍 ${t('Finding distance…', 'దూరాన్ని కనుగొంటున్నాము…')}`}</Text>
               <Text style={styles.cardDescription} numberOfLines={3}>{business.description}</Text>
             </View></View>
             <View style={styles.cardActions}><Pressable style={styles.directionButton} onPress={() => Linking.openURL(buildGoogleMapsDirectionsUrl({ latitude: business.latitude, longitude: business.longitude }, location ?? undefined))}><Text style={styles.directionText}>{t('Directions', 'దిశలు')}</Text></Pressable><Pressable style={styles.websiteButton} onPress={() => business.website && business.website !== 'N/A' ? Linking.openURL(business.website) : Alert.alert(t('Website unavailable', 'వెబ్‌సైట్ అందుబాటులో లేదు'), t('This listing does not have a website.', 'ఈ లిస్టింగ్‌కు వెబ్‌సైట్ లేదు.'))}><Text style={styles.websiteText}>{t('Website', 'వెబ్‌సైట్')}</Text></Pressable>{business.submittedBy === user?.phone && business.status !== 'Sold out' && <Pressable style={styles.soldOutButton} onPress={() => markSoldOut(business.id)}><Text style={styles.soldOutText}>{t('Mark sold out', 'అమ్ముడైనట్లు గుర్తించండి')}</Text></Pressable>}</View>
@@ -192,6 +199,8 @@ const styles = StyleSheet.create({
   headerCopy: { flex: 1 },
   headerKicker: { color: '#5B52D1', fontSize: 9, fontWeight: '800', letterSpacing: 1 },
   headerCount: { color: '#4A4AD5', fontSize: 11, fontWeight: '800', marginLeft: 8 },
+  postButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: '#514BD5' },
+  postButtonText: { color: '#FFFFFF', fontSize: 25, fontWeight: '500', lineHeight: 28 },
   listContent: {
     paddingHorizontal: 18,
     paddingTop: 20,
@@ -262,6 +271,9 @@ const styles = StyleSheet.create({
   sliderLabel: { color: '#4F4F5F', fontSize: 12, fontWeight: '700' },
   sliderInput: { width: 80, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: '#DCE0F2', backgroundColor: '#F7F8FF', color: '#2D2F43', textAlign: 'center' },
   cardPhone: { marginTop: 5, color: '#636B82', fontSize: 11 },
+  marketplaceOwner: { marginTop: 6, color: '#3F4154', fontSize: 11, fontWeight: '700' },
+  marketplacePrice: { marginTop: 3, color: '#4D8052', fontSize: 12, fontWeight: '800' },
+  marketplaceRooms: { marginTop: 3, color: '#636B82', fontSize: 11 },
   openStatus: { marginTop: 4, color: '#4D8052', fontSize: 11, fontWeight: '800' },
   soldOutStatus: { color: '#C4515B' },
   cardAddress: {

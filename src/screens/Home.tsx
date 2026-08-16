@@ -42,7 +42,7 @@ export default function Home({ navigation }: any) {
   const { favorites, toggleFavorite, isLoggedIn } = useAuth()
   const { getReviewStats } = useReviews()
   const { distances, ready, ensureAddresses, sortNearest } = useNearby()
-  const { t, category: categoryLabel } = useLanguage()
+  const { t, category: categoryLabel, businessName } = useLanguage()
   const { businesses, categories, announcements: updates, loading, error, retry } = useDirectory()
   const cards = homeCategoryIds.map((id) => categories.find((category) => category.id === id)).filter((category): category is NonNullable<typeof category> => Boolean(category))
   const categoryListingCount = (categoryId: string) => {
@@ -139,16 +139,16 @@ export default function Home({ navigation }: any) {
             <Image source={{ uri: weatherImageUrl }} style={styles.utilityImage} resizeMode="cover" />
             <View style={styles.utilityCopy}>
               <Text style={[styles.utilityLabel, styles.weatherLabel]}>{t('TODAY’S WEATHER', 'ఈరోజు వాతావరణం')}</Text>
-              <Text style={[styles.utilityValue, styles.weatherValue]}>{weather?.temp || (utilityLoading ? 'Loading…' : 'Unavailable')}</Text>
-              <Text style={styles.utilityText}>{weather ? `${weather.condition} · ${weather.humidity}` : 'Kandukur area'}</Text>
+              <Text style={[styles.utilityValue, styles.weatherValue]}>{weather?.temp || (utilityLoading ? t('Loading…', 'లోడ్ అవుతోంది…') : t('Unavailable', 'అందుబాటులో లేదు'))}</Text>
+              <Text style={styles.utilityText}>{weather ? `${weather.condition} · ${weather.humidity}` : t('Kandukur area', 'కందుకూరు ప్రాంతం')}</Text>
             </View>
           </Pressable>
           <Pressable style={styles.utilityCard} onPress={() => setSelectedUtility('gold')}>
             <Image source={{ uri: goldImageUrl }} style={styles.utilityImage} resizeMode="cover" />
             <View style={styles.utilityCopy}>
               <Text style={[styles.utilityLabel, styles.goldLabel]}>{t('GOLD RATE TODAY', 'ఈరోజు బంగారం ధర')}</Text>
-              <Text style={styles.goldRateValue}>{gold ? `₹${gold.pricePerSavaram22K.toLocaleString('en-IN')}` : utilityLoading ? 'Loading…' : 'Unavailable'}</Text>
-              <Text style={styles.utilityText}>22K · 8g savaram</Text>
+              <Text style={styles.goldRateValue}>{gold ? `₹${gold.pricePerSavaram22K.toLocaleString('en-IN')}` : utilityLoading ? t('Loading…', 'లోడ్ అవుతోంది…') : t('Unavailable', 'అందుబాటులో లేదు')}</Text>
+              <Text style={styles.utilityText}>{t('22K · 8g savaram', '22K · 8 గ్రాములు')}</Text>
             </View>
           </Pressable>
         </View>
@@ -175,7 +175,7 @@ export default function Home({ navigation }: any) {
                 >
                   <Image source={{ uri: update.image }} style={styles.updateImage} resizeMode="cover" />
                   <View style={styles.updateShade} />
-                  <View style={styles.updateCopy}><Text style={styles.updateTitle}>{update.title}</Text><Text style={styles.updateDetail}>{update.detail}</Text><Text style={styles.updateLocation}>Kandukur, Andhra Pradesh</Text></View>
+                  <View style={styles.updateCopy}><Text style={styles.updateTitle}>{update.title}</Text><Text style={styles.updateDetail}>{update.detail}</Text><Text style={styles.updateLocation}>{t('Kandukur, Andhra Pradesh', 'కందుకూరు, ఆంధ్రప్రదేశ్')}</Text></View>
                 </Pressable>
               ))}
             </ScrollView>
@@ -211,16 +211,16 @@ export default function Home({ navigation }: any) {
               <Pressable key={business.id} style={styles.businessCard} onPress={() => navigation.navigate('BusinessDetails', { id: business.id })}>
                 <View style={styles.businessImageWrap}>
                   <Image source={imageSource} style={styles.businessImage} resizeMode="cover" />
-                  <View style={styles.openBadge}><Text style={styles.openText}>Open</Text></View>
+                  <View style={styles.openBadge}><Text style={styles.openText}>{t('Open', 'తెరిచి ఉంది')}</Text></View>
                   <Pressable style={styles.favoriteBadge} onPress={() => isLoggedIn ? toggleFavorite(business.id) : navigation.navigate('Profile')}>
                     <Text style={[styles.favoriteText, isFavorite && styles.favoriteActive]}>{isFavorite ? '♥' : '♡'}</Text>
                   </Pressable>
                 </View>
                 <View style={styles.businessContent}>
-                  <Text style={styles.businessName}>{business.name}</Text>
+                  <Text style={styles.businessName}>{businessName(business.name, business.nameTe)}</Text>
                   <View style={styles.businessMeta}><Text style={styles.businessCategory}>{categoryLabel(business.categoryName)}</Text><Text style={styles.trending}>{t('Trending', 'ట్రెండింగ్')}</Text></View>
-                  <Text style={styles.rating}>⭐ {reviewStats.rating.toFixed(1)} <Text style={styles.reviewCount}>({reviewStats.count} reviews)</Text></Text>
-                  <Text style={styles.businessAddress}>📍 {business.address}</Text><Text style={styles.businessDistance}>{(distances[business.id] ?? distances[business.address]) !== undefined ? `${((distances[business.id] ?? distances[business.address]) as number).toFixed(1)} km away` : 'Finding distance…'}</Text>
+                  <Text style={styles.rating}>⭐ {reviewStats.rating.toFixed(1)} <Text style={styles.reviewCount}>({reviewStats.count} {t('reviews', 'సమీక్షలు')})</Text></Text>
+                  <Text style={styles.businessAddress}>📍 {business.address}</Text><Text style={styles.businessDistance}>{(distances[business.id] ?? distances[business.address]) !== undefined ? `${((distances[business.id] ?? distances[business.address]) as number).toFixed(1)} ${t('km away', 'కి.మీ దూరంలో')}` : t('Finding distance…', 'దూరాన్ని కనుగొంటున్నాము…')}</Text>
                 </View>
               </Pressable>
             )
@@ -236,8 +236,8 @@ export default function Home({ navigation }: any) {
               <Pressable style={styles.utilityModalClose} onPress={() => setSelectedUtility(null)}><Text style={styles.utilityModalCloseText}>×</Text></Pressable>
               <View style={styles.utilityModalHeroCopy}>
                 <Text style={styles.utilityModalKicker}>{selectedUtility === 'weather' ? t('Today’s weather', 'ఈరోజు వాతావరణం') : t('Gold rate today', 'ఈరోజు బంగారం ధర')}</Text>
-                <Text style={styles.utilityModalHeroValue}>{selectedUtility === 'weather' ? (weather?.temp || 'Unavailable') : (gold ? `₹${gold.pricePerSavaram22K.toLocaleString('en-IN')}` : 'Unavailable')}</Text>
-                <Text style={styles.utilityModalHeroDetail}>{selectedUtility === 'weather' ? (weather ? `${weather.condition} · ${weather.humidity}` : 'Kandukur area') : '22K · 8g savaram'}</Text>
+                <Text style={styles.utilityModalHeroValue}>{selectedUtility === 'weather' ? (weather?.temp || t('Unavailable', 'అందుబాటులో లేదు')) : (gold ? `₹${gold.pricePerSavaram22K.toLocaleString('en-IN')}` : t('Unavailable', 'అందుబాటులో లేదు'))}</Text>
+                <Text style={styles.utilityModalHeroDetail}>{selectedUtility === 'weather' ? (weather ? `${weather.condition} · ${weather.humidity}` : t('Kandukur area', 'కందుకూరు ప్రాంతం')) : t('22K · 8g savaram', '22K · 8 గ్రాములు')}</Text>
               </View>
             </View>
             {selectedUtility === 'weather' ? (
@@ -247,10 +247,10 @@ export default function Home({ navigation }: any) {
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hourlyRail}>{weather.hourly.map((hour) => <View key={hour.time} style={styles.hourlyItem}><Text style={styles.forecastTime}>{new Date(hour.time).toLocaleTimeString([], { hour: 'numeric' })}</Text><Text style={styles.forecastIcon}>{weatherIcon(hour.code)}</Text><Text style={styles.forecastTemp}>{hour.temp}°</Text></View>)}</ScrollView>
                 <Text style={styles.forecastHeading}>{t('7-day forecast', '7 రోజుల అంచనా')}</Text>
                 <View style={styles.dailyList}>{weather.daily.map((day) => <View key={day.date} style={styles.dailyItem}><Text style={styles.dailyDay}>{new Date(day.date).toLocaleDateString([], { weekday: 'short' })}</Text><Text style={styles.forecastIcon}>{weatherIcon(day.code)}</Text><Text style={styles.dailyTemp}>{day.max}° <Text style={styles.dailyMin}>{day.min}°</Text></Text></View>)}</View>
-                <Text style={styles.utilityModalFoot}>Kandukur area · Updated {new Date(weather.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-              </ScrollView> : <Text style={styles.utilityModalEmpty}>{utilityLoading ? 'Loading…' : 'Weather unavailable right now.'}</Text>
+                <Text style={styles.utilityModalFoot}>{t('Kandukur area · Updated', 'కందుకూరు ప్రాంతం · నవీకరించబడింది')} {new Date(weather.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+              </ScrollView> : <Text style={styles.utilityModalEmpty}>{utilityLoading ? t('Loading…', 'లోడ్ అవుతోంది…') : t('Weather unavailable right now.', 'ప్రస్తుతం వాతావరణ సమాచారం అందుబాటులో లేదు.')}</Text>
             ) : (
-              gold ? <View style={styles.goldModalBody}><View style={styles.goldModalRate}><Text style={styles.goldModalLabel}>22K · 8g</Text><Text style={styles.goldModalValue}>₹{gold.pricePerSavaram22K.toLocaleString('en-IN')}</Text></View><View style={styles.goldModalRate}><Text style={styles.goldModalLabel}>24K · 8g</Text><Text style={styles.goldModalValue}>₹{gold.pricePerSavaram.toLocaleString('en-IN')}</Text></View><Text style={styles.utilityModalFoot}>Daily market rate · Updated {gold.updatedAt ? new Date(gold.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'today'}</Text></View> : <Text style={styles.utilityModalEmpty}>{utilityLoading ? 'Loading…' : 'Gold rate unavailable right now.'}</Text>
+              gold ? <View style={styles.goldModalBody}><View style={styles.goldModalRate}><Text style={styles.goldModalLabel}>22K · 8g</Text><Text style={styles.goldModalValue}>₹{gold.pricePerSavaram22K.toLocaleString('en-IN')}</Text></View><View style={styles.goldModalRate}><Text style={styles.goldModalLabel}>24K · 8g</Text><Text style={styles.goldModalValue}>₹{gold.pricePerSavaram.toLocaleString('en-IN')}</Text></View><Text style={styles.utilityModalFoot}>{t('Daily market rate · Updated', 'రోజువారీ మార్కెట్ రేటు · నవీకరించబడింది')} {gold.updatedAt ? new Date(gold.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : t('today', 'ఈరోజు')}</Text></View> : <Text style={styles.utilityModalEmpty}>{utilityLoading ? t('Loading…', 'లోడ్ అవుతోంది…') : t('Gold rate unavailable right now.', 'ప్రస్తుతం బంగారం ధర అందుబాటులో లేదు.')}</Text>
             )}
           </View>
         </View>

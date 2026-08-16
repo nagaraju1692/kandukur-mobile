@@ -6,12 +6,17 @@ import { useAuth } from './AuthContext'
 export type SubmittedListing = {
   id: string
   name: string
+  nameTe?: string
   categoryName: string
   categoryId: string
   address: string
   latitude?: number | null
   longitude?: number | null
   phone: string
+  ownerName?: string
+  rooms?: string
+  price?: string
+  facing?: string
   description: string
   website: string
   image?: string

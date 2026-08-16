@@ -17,7 +17,7 @@ export default function BusinessDetails({ route, navigation }: any) {
   const { businesses, loading, error, retry } = useDirectory()
   const business = businesses.find(item => item.id === id)
   const { favorites, toggleFavorite, isLoggedIn, isSuperAdmin, user } = useAuth()
-  const { t, category: categoryLabel } = useLanguage()
+  const { t, category: categoryLabel, businessName } = useLanguage()
   const { getReviewStats, getReviews, submitReview, loading: reviewsLoading, error: reviewsError, retry: retryReviews } = useReviews()
   const { distances, ready, ensureAddresses, location } = useNearby()
   const [showReviewForm, setShowReviewForm] = useState(false)
@@ -42,10 +42,10 @@ export default function BusinessDetails({ route, navigation }: any) {
     return () => clearInterval(interval)
   }, [business?.id, galleryImages.length])
 
-  if (!business) return <View style={styles.empty}><DirectoryState loading={loading} error={error || 'Listing not found.'} onRetry={retry} /></View>
+  if (!business) return <View style={styles.empty}><DirectoryState loading={loading} error={error || t('Listing not found.', 'లిస్టింగ్ కనుగొనబడలేదు.')} onRetry={retry} /></View>
 
   const openMap = () => Linking.openURL(buildGoogleMapsDirectionsUrl({ latitude: business.latitude, longitude: business.longitude }, location ?? undefined))
-  const share = () => Share.share({ title: business.name, message: `${business.name} - ${business.address}` })
+  const share = () => Share.share({ title: businessName(business.name, business.nameTe), message: `${businessName(business.name, business.nameTe)} - ${business.address}` })
   const openWebsite = () => business.website && business.website !== 'N/A' ? Linking.openURL(business.website) : Alert.alert(t('Website unavailable', 'వెబ్‌సైట్ అందుబాటులో లేదు'), t('This listing does not have a website.', 'ఈ లిస్టింగ్‌కు వెబ్‌సైట్ లేదు.'))
   const call = () => business.phone && business.phone !== 'N/A' ? Linking.openURL(`tel:${business.phone.replace(/\s/g, '')}`) : Alert.alert(t('Phone unavailable', 'ఫోన్ అందుబాటులో లేదు'), t('This listing does not have a verified phone number.', 'ఈ లిస్టింగ్‌కు ధృవీకరించిన ఫోన్ నంబర్ లేదు.'))
   const openWhatsApp = () => {
@@ -101,9 +101,9 @@ export default function BusinessDetails({ route, navigation }: any) {
         </View>
         <View style={styles.body}>
           <Text style={styles.category}>{categoryLabel(business.categoryName)}</Text>
-          <Text style={styles.title}>{business.name}</Text>
-          <Text style={styles.ratingSummary}>{reviewStats.rating.toFixed(1)} ({reviewStats.count} reviews)</Text>
-          <Text style={styles.distance}>{(distances[business.id] ?? distances[business.address]) !== undefined ? `${((distances[business.id] ?? distances[business.address]) as number).toFixed(1)} km from your location` : 'Calculating distance…'}</Text>
+          <Text style={styles.title}>{businessName(business.name, business.nameTe)}</Text>
+          <Text style={styles.ratingSummary}>{reviewStats.rating.toFixed(1)} ({reviewStats.count} {t('reviews', 'సమీక్షలు')})</Text>
+          <Text style={styles.distance}>{(distances[business.id] ?? distances[business.address]) !== undefined ? `${((distances[business.id] ?? distances[business.address]) as number).toFixed(1)} ${t('km from your location', 'మీ స్థానం నుండి కి.మీ దూరంలో')}` : t('Calculating distance…', 'దూరాన్ని లెక్కిస్తున్నాము…')}</Text>
           <Text style={styles.description}>{business.description}</Text>
           <View style={styles.actions}><Pressable style={styles.secondary} onPress={call}><Text style={styles.actionIcon}>📞</Text><Text style={styles.secondaryText}>{t('Call', 'కాల్')}</Text></Pressable><Pressable style={styles.primary} onPress={openMap}><Text style={styles.actionIcon}>📍</Text><Text style={styles.primaryText}>{t('Directions', 'దిశలు')}</Text></Pressable><Pressable style={styles.secondary} onPress={share}><Text style={styles.actionIcon}>🔗</Text><Text style={styles.secondaryText}>{t('Share', 'షేర్')}</Text></Pressable><Pressable style={styles.secondary} onPress={openWhatsApp}><Text style={styles.actionIcon}>💬</Text><Text style={styles.secondaryText}>{t('WhatsApp', 'వాట్స్అప్')}</Text></Pressable><Pressable style={styles.secondary} onPress={() => isLoggedIn ? toggleFavorite(business.id) : navigation.navigate('Profile')}><Text style={styles.actionIcon}>{isFavorite ? '♥' : '♡'}</Text><Text style={styles.secondaryText}>{isFavorite ? t('Saved', 'సేవ్ చేశారు') : t('Save', 'సేవ్')}</Text></Pressable></View>
           <View style={styles.info}><Text style={styles.infoLabel}>{t('ABOUT THIS PLACE', 'ఈ ప్రదేశం గురించి')}</Text><Text style={styles.infoText}>{business.description || t('Discover everything this business has to offer.', 'ఈ వ్యాపారం అందించే సేవలను తెలుసుకోండి.')}</Text><Text style={styles.infoLabel}>{t('CONTACT INFORMATION', 'సంప్రదింపు సమాచారం')}</Text><Text style={styles.infoText}>📞 {business.phone || t('Not available', 'అందుబాటులో లేదు')}</Text><Text style={styles.infoText}>📍 {business.address}</Text>{business.website && <Pressable onPress={openWebsite}><Text style={styles.websiteLink}>🌐 {business.website}</Text></Pressable>}</View>

@@ -743,8 +743,8 @@ export default function Admin({ navigation }: any) {
       {Platform.OS === 'web' && webDateInput ? (
         <View style={styles.webDateOverlay}>
           <View style={styles.webDateCard}>
-            <Text style={styles.webDateTitle}>Select date</Text>
-            <Text style={styles.webDateMessage}>Use format YYYY-MM-DD</Text>
+            <Text style={styles.webDateTitle}>{t('Select date', 'తేదీని ఎంచుకోండి')}</Text>
+            <Text style={styles.webDateMessage}>{t('Use format YYYY-MM-DD', 'YYYY-MM-DD ఆకృతిని ఉపయోగించండి')}</Text>
             <TextInput
               style={styles.webDateInput}
               value={webDateInput.value}
@@ -754,10 +754,10 @@ export default function Admin({ navigation }: any) {
             />
             <View style={styles.webDateActions}>
               <Pressable style={styles.webDateCancelButton} onPress={() => setWebDateInput(null)}>
-                <Text style={styles.webDateCancelText}>Cancel</Text>
+                <Text style={styles.webDateCancelText}>{t('Cancel', 'రద్దు చేయండి')}</Text>
               </Pressable>
               <Pressable style={styles.webDateConfirmButton} onPress={confirmWebDateInput}>
-                <Text style={styles.webDateConfirmText}>Set Date</Text>
+                <Text style={styles.webDateConfirmText}>{t('Set Date', 'తేదీని సెట్ చేయండి')}</Text>
               </Pressable>
             </View>
           </View>
@@ -766,7 +766,7 @@ export default function Admin({ navigation }: any) {
       <Modal visible={showCategoryFilter} transparent animationType="fade" onRequestClose={() => setShowCategoryFilter(false)}>
         <Pressable style={styles.categoryFilterOverlay} onPress={() => setShowCategoryFilter(false)}>
           <View style={styles.categoryFilterMenu}>
-            <Text style={styles.categoryFilterTitle}>{t('Choose category', 'Choose category')}</Text>
+            <Text style={styles.categoryFilterTitle}>{t('Choose category', 'వర్గాన్ని ఎంచుకోండి')}</Text>
             <ScrollView showsVerticalScrollIndicator={false}>
               {['All categories', ...listingCategories].map((category) => (
                 <Pressable key={category} style={[styles.categoryFilterOption, listingCategoryFilter === category && styles.categoryFilterOptionActive]} onPress={() => { setListingCategoryFilter(category); setShowCategoryFilter(false) }}>
@@ -780,19 +780,19 @@ export default function Admin({ navigation }: any) {
       {Platform.OS === 'web' && webDeleteTarget ? (
         <View style={styles.webDeleteOverlay}>
           <View style={styles.webDeleteCard}>
-            <Text style={styles.webDeleteTitle}>Confirm to delete</Text>
-            <Text style={styles.webDeleteMessage}>Are you sure you want to delete this announcement?</Text>
+            <Text style={styles.webDeleteTitle}>{t('Confirm to delete', 'తొలగింపును నిర్ధారించండి')}</Text>
+            <Text style={styles.webDeleteMessage}>{t('Are you sure you want to delete this announcement?', 'ఈ ప్రకటనను తొలగించాలనుకుంటున్నారా?')}</Text>
             <Text style={styles.webDeleteItem}>{webDeleteTarget.title}</Text>
             <View style={styles.webDeleteActions}>
               <Pressable style={styles.webDeleteCancelButton} onPress={() => setWebDeleteTarget(null)}>
-                <Text style={styles.webDeleteCancelText}>No</Text>
+                <Text style={styles.webDeleteCancelText}>{t('No', 'వద్దు')}</Text>
               </Pressable>
               <Pressable
                 style={[styles.webDeleteConfirmButton, deletingAnnouncementId === webDeleteTarget.id && styles.disabled]}
                 onPress={() => void executeAnnouncementDelete(webDeleteTarget)}
                 disabled={deletingAnnouncementId === webDeleteTarget.id}
               >
-                <Text style={styles.webDeleteConfirmText}>{deletingAnnouncementId === webDeleteTarget.id ? 'Deleting...' : 'Yes, Delete'}</Text>
+                <Text style={styles.webDeleteConfirmText}>{deletingAnnouncementId === webDeleteTarget.id ? t('Deleting...', 'తొలగిస్తోంది...') : t('Yes, Delete', 'అవును, తొలగించండి')}</Text>
               </Pressable>
             </View>
           </View>
@@ -801,12 +801,12 @@ export default function Admin({ navigation }: any) {
       {Platform.OS === 'web' && webBusinessDeleteTarget ? (
         <View style={styles.webDeleteOverlay}>
           <View style={styles.webDeleteCard}>
-            <Text style={styles.webDeleteTitle}>Confirm to delete</Text>
-            <Text style={styles.webDeleteMessage}>Are you sure you want to delete this listing?</Text>
+            <Text style={styles.webDeleteTitle}>{t('Confirm to delete', 'తొలగింపును నిర్ధారించండి')}</Text>
+            <Text style={styles.webDeleteMessage}>{t('Are you sure you want to delete this listing?', 'ఈ లిస్టింగ్‌ను తొలగించాలనుకుంటున్నారా?')}</Text>
             <Text style={styles.webDeleteItem}>{webBusinessDeleteTarget.name}</Text>
             <View style={styles.webDeleteActions}>
               <Pressable style={styles.webDeleteCancelButton} onPress={() => setWebBusinessDeleteTarget(null)}>
-                <Text style={styles.webDeleteCancelText}>No</Text>
+                <Text style={styles.webDeleteCancelText}>{t('No', 'వద్దు')}</Text>
               </Pressable>
               <Pressable
                 style={[styles.webDeleteConfirmButton, busyBusinessId === webBusinessDeleteTarget.id && styles.disabled]}

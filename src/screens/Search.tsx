@@ -13,7 +13,7 @@ import { colors } from '../ui/theme'
 export default function Search({ navigation, route }: any) {
   const [query, setQuery] = useState(route.params?.query || '')
   const { favorites, toggleFavorite, isLoggedIn } = useAuth()
-  const { t, category: categoryLabel } = useLanguage()
+  const { t, category: categoryLabel, businessName } = useLanguage()
   const { distances, ready, ensureAddresses, sortNearest, location } = useNearby()
   const { businesses } = useDirectory()
   const results = useMemo(() => {
@@ -45,7 +45,7 @@ export default function Search({ navigation, route }: any) {
         {sortNearest(results).map((business) => (
           <Pressable key={business.id} style={styles.resultCard} onPress={() => navigation.navigate('BusinessDetails', { id: business.id })}>
             <View style={styles.resultImageWrap}><Image source={getBusinessImage(business.image, business.categoryName)} style={styles.image} /><Pressable style={styles.favoriteButton} onPress={() => isLoggedIn ? toggleFavorite(business.id) : navigation.navigate('Profile')}><Text style={[styles.favorite, favorites.includes(business.id) && styles.favoriteActive]}>{favorites.includes(business.id) ? '♥' : '♡'}</Text></Pressable></View>
-            <View style={styles.resultBody}><Text style={styles.name}>{business.name}</Text><Text style={styles.category}>{categoryLabel(business.categoryName)}</Text><Text style={styles.address}>📍 {business.address}</Text><Text style={styles.distance}>{(distances[business.id] ?? distances[business.address]) !== undefined ? `${((distances[business.id] ?? distances[business.address]) as number).toFixed(1)} km away` : 'Finding distance…'}</Text>{business.latitude != null && business.longitude != null && <Pressable onPress={() => Linking.openURL(buildGoogleMapsDirectionsUrl({ latitude: business.latitude, longitude: business.longitude }, location ?? undefined))}><Text style={styles.linkText}>Directions</Text></Pressable>}</View>
+            <View style={styles.resultBody}><Text style={styles.name}>{businessName(business.name, business.nameTe)}</Text><Text style={styles.category}>{categoryLabel(business.categoryName)}</Text><Text style={styles.address}>📍 {business.address}</Text><Text style={styles.distance}>{(distances[business.id] ?? distances[business.address]) !== undefined ? `${((distances[business.id] ?? distances[business.address]) as number).toFixed(1)} ${t('km away', 'కి.మీ దూరంలో')}` : t('Finding distance…', 'దూరాన్ని కనుగొంటున్నాము…')}</Text>{business.latitude != null && business.longitude != null && <Pressable onPress={() => Linking.openURL(buildGoogleMapsDirectionsUrl({ latitude: business.latitude, longitude: business.longitude }, location ?? undefined))}><Text style={styles.linkText}>{t('Directions', 'దిశలు')}</Text></Pressable>}</View>
           </Pressable>
         ))}
       </ScrollView>
