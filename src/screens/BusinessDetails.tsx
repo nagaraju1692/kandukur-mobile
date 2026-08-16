@@ -45,7 +45,7 @@ export default function BusinessDetails({ route, navigation }: any) {
 
   if (!business) return <View style={styles.empty}><DirectoryState loading={loading} error={error || t('Listing not found.', 'లిస్టింగ్ కనుగొనబడలేదు.')} onRetry={retry} /></View>
 
-  const openMap = () => Linking.openURL(buildGoogleMapsDirectionsUrl({ latitude: business.latitude, longitude: business.longitude }, location ?? undefined))
+  const openMap = () => Linking.openURL(buildGoogleMapsDirectionsUrl({ latitude: business.latitude, longitude: business.longitude, address: business.address }, location ?? undefined))
   const share = () => Share.share({ title: businessName(business.name, business.nameTe), message: `${businessName(business.name, business.nameTe)} - ${business.address}` })
   const openWebsite = () => business.website && business.website !== 'N/A' ? Linking.openURL(business.website) : Alert.alert(t('Website unavailable', 'వెబ్‌సైట్ అందుబాటులో లేదు'), t('This listing does not have a website.', 'ఈ లిస్టింగ్‌కు వెబ్‌సైట్ లేదు.'))
   const call = () => business.phone && business.phone !== 'N/A' ? Linking.openURL(`tel:${business.phone.replace(/\s/g, '')}`) : Alert.alert(t('Phone unavailable', 'ఫోన్ అందుబాటులో లేదు'), t('This listing does not have a verified phone number.', 'ఈ లిస్టింగ్‌కు ధృవీకరించిన ఫోన్ నంబర్ లేదు.'))

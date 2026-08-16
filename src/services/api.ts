@@ -107,18 +107,25 @@ export function geocodeAddress(address: string): Promise<{ latitude: number; lon
 }
 
 export function buildGoogleMapsDirectionsUrl(
-  destination: { latitude: number | null | undefined; longitude: number | null | undefined },
+  destination: { latitude: number | null | undefined; longitude: number | null | undefined; address?: string | null },
   origin?: { latitude: number; longitude: number } | null,
   travelMode: 'driving' | 'walking' | 'transit' | 'bicycling' = 'driving',
 ) {
   const destinationLatitude = Number(destination.latitude)
   const destinationLongitude = Number(destination.longitude)
-  if (!Number.isFinite(destinationLatitude) || !Number.isFinite(destinationLongitude)) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('Kandukur Andhra Pradesh')}`
-  }
+  const hasCoordinates = destination.latitude != null
+    && destination.longitude != null
+    && Number.isFinite(destinationLatitude)
+    && Number.isFinite(destinationLongitude)
+    && Math.abs(destinationLatitude) <= 90
+    && Math.abs(destinationLongitude) <= 180
+    && !(destinationLatitude === 0 && destinationLongitude === 0)
 
   const originQuery = origin ? `${origin.latitude},${origin.longitude}` : ''
-  const params = new URLSearchParams({ api: '1', destination: `${destinationLatitude},${destinationLongitude}`, travelmode: travelMode })
+  const destinationQuery = hasCoordinates
+    ? `${destinationLatitude},${destinationLongitude}`
+    : `${destination.address || 'Kandukur'}, Andhra Pradesh, India`
+  const params = new URLSearchParams({ api: '1', destination: destinationQuery, travelmode: travelMode })
   if (originQuery) params.set('origin', originQuery)
   return `https://www.google.com/maps/dir/?${params.toString()}`
 }
@@ -224,6 +231,36 @@ export async function uploadAdminBusinessImage(
   const response = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/api/admin/uploads/business-image`, {
     method: 'POST',
     headers,
+    body: form,
+  })
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({})) as { error?: string; message?: string }
+    throw new Error(payload.error || payload.message || `Image upload failed: ${response.status}`)
+  }
+  return response.json() as Promise<{ data: { image: string; path: string } }>
+}
+
+export async function uploadMarketplaceImage(
+  asset: { uri: string; fileName?: string | null; mimeType?: string | null },
+  userPhone: string,
+) {
+  if (!apiBaseUrl) throw new Error('EXPO_PUBLIC_API_URL is not configured')
+  const form = new FormData()
+  const fallbackName = `marketplace-${Date.now()}.jpg`
+  const fallbackType = 'image/jpeg'
+
+  if (typeof window !== 'undefined') {
+    const fileResponse = await fetch(asset.uri)
+    if (!fileResponse.ok) throw new Error('Unable to read selected image file')
+    const blob = await fileResponse.blob()
+    form.append('image', blob, asset.fileName || fallbackName)
+  } else {
+    form.append('image', { uri: asset.uri, name: asset.fileName || fallbackName, type: asset.mimeType || fallbackType } as any)
+  }
+
+  const response = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/api/uploads/marketplace-image`, {
+    method: 'POST',
+    headers: { 'x-user-phone': userPhone },
     body: form,
   })
   if (!response.ok) {

@@ -50,7 +50,7 @@ export default function Businesses({ navigation, route }: any) {
   const { distances, ready, ensureAddresses, sortNearest, location } = useNearby()
   const { markSoldOut } = useSubmittedListings()
   const { businesses, categories, loading, error, retry } = useDirectory()
-  const [sortMode, setSortMode] = useState<'nearest' | 'rating' | 'newest'>('nearest')
+  const [sortMode, setSortMode] = useState<'nearest' | 'rating' | 'newest'>('newest')
   const [minRating, setMinRating] = useState(0)
   const [distanceFilter, setDistanceFilter] = useState(20)
   const categoryId = route.params?.categoryId || null
@@ -79,9 +79,7 @@ export default function Businesses({ navigation, route }: any) {
         return secondRating - firstRating
       })
     }
-    if (sortMode === 'newest') {
-      return cloned.sort((first, second) => (second.id > first.id ? 1 : -1))
-    }
+    if (sortMode === 'newest') return cloned.sort((first, second) => new Date(second.createdAt || 0).getTime() - new Date(first.createdAt || 0).getTime())
     return sortNearest(cloned)
   })()
   React.useEffect(() => { if (ready) ensureAddresses(selectedBusinesses.map((business) => ({ id: business.id, address: business.address, latitude: business.latitude, longitude: business.longitude }))) }, [selectedBusinesses.length, categoryId, ready])
@@ -159,7 +157,7 @@ export default function Businesses({ navigation, route }: any) {
               <Text style={styles.cardDistance}>{(distances[business.id] ?? distances[business.address]) !== undefined ? `📍 ${((distances[business.id] ?? distances[business.address]) as number).toFixed(1)} ${t('km away', 'కి.మీ దూరంలో')}` : `📍 ${t('Finding distance…', 'దూరాన్ని కనుగొంటున్నాము…')}`}</Text>
               <Text style={styles.cardDescription} numberOfLines={3}>{business.description}</Text>
             </View></View>
-            <View style={styles.cardActions}><Pressable style={styles.directionButton} onPress={() => Linking.openURL(buildGoogleMapsDirectionsUrl({ latitude: business.latitude, longitude: business.longitude }, location ?? undefined))}><Text style={styles.directionText}>{t('Directions', 'దిశలు')}</Text></Pressable><Pressable style={styles.websiteButton} onPress={() => business.website && business.website !== 'N/A' ? Linking.openURL(business.website) : Alert.alert(t('Website unavailable', 'వెబ్‌సైట్ అందుబాటులో లేదు'), t('This listing does not have a website.', 'ఈ లిస్టింగ్‌కు వెబ్‌సైట్ లేదు.'))}><Text style={styles.websiteText}>{t('Website', 'వెబ్‌సైట్')}</Text></Pressable>{business.submittedBy === user?.phone && business.status !== 'Sold out' && <Pressable style={styles.soldOutButton} onPress={() => markSoldOut(business.id)}><Text style={styles.soldOutText}>{t('Mark sold out', 'అమ్ముడైనట్లు గుర్తించండి')}</Text></Pressable>}</View>
+            <View style={styles.cardActions}><Pressable style={styles.directionButton} onPress={() => Linking.openURL(buildGoogleMapsDirectionsUrl({ latitude: business.latitude, longitude: business.longitude, address: business.address }, location ?? undefined))}><Text style={styles.directionText}>{t('Directions', 'దిశలు')}</Text></Pressable><Pressable style={styles.websiteButton} onPress={() => business.website && business.website !== 'N/A' ? Linking.openURL(business.website) : Alert.alert(t('Website unavailable', 'వెబ్‌సైట్ అందుబాటులో లేదు'), t('This listing does not have a website.', 'ఈ లిస్టింగ్‌కు వెబ్‌సైట్ లేదు.'))}><Text style={styles.websiteText}>{t('Website', 'వెబ్‌సైట్')}</Text></Pressable>{business.submittedBy === user?.phone && business.status !== 'Sold out' && <Pressable style={styles.soldOutButton} onPress={() => markSoldOut(business.id)}><Text style={styles.soldOutText}>{t('Mark sold out', 'అమ్ముడైనట్లు గుర్తించండి')}</Text></Pressable>}</View>
           </Pressable>
         ))}
 

@@ -8,7 +8,7 @@ import { useDirectory } from '../context/DirectoryContext'
 import MobileHeader from './MobileHeader'
 import BottomNav from './BottomNav'
 import { colors } from '../ui/theme'
-import { geocodeAddress, uploadAdminBusinessImage } from '../services/api'
+import { geocodeAddress, uploadAdminBusinessImage, uploadMarketplaceImage } from '../services/api'
 import FocusTextInput from '../ui/FocusTextInput'
 
 function normalizeGallery(gallery: unknown): string[] {
@@ -88,7 +88,7 @@ export default function SubmitBusiness({ navigation, route }: any) {
     : [['name', 'Business name'], ['address', 'Location / address'], ['phone', 'Mobile number'], ['website', 'Website (optional)']]
 
   const pickListingImages = async (target: 'cover' | 'gallery') => {
-    if (!user?.phone || !isSuperAdmin) return
+    if (!user?.phone || (!isSuperAdmin && !isMarketplaceListing)) return
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
       Alert.alert(t('Permission needed', 'Permission needed'), t('Allow gallery access to select listing photos.', 'Allow gallery access to select listing photos.'))
@@ -105,7 +105,8 @@ export default function SubmitBusiness({ navigation, route }: any) {
 
     setIsUploadingImages(true)
     try {
-      const uploadedImages = await Promise.all(result.assets.map((asset) => uploadAdminBusinessImage({
+      const uploadImage = isSuperAdmin ? uploadAdminBusinessImage : uploadMarketplaceImage
+      const uploadedImages = await Promise.all(result.assets.map((asset) => uploadImage({
         uri: asset.uri,
         fileName: asset.fileName,
         mimeType: asset.mimeType,
@@ -132,7 +133,7 @@ export default function SubmitBusiness({ navigation, route }: any) {
     if (!form.categoryId) nextErrors.categoryName = t('Choose a category.', 'Choose a category.')
     if (form.address.trim().length < 5) nextErrors.address = t('Enter a complete location.', 'Enter a complete location.')
     if (!/^\d{10,11}$/.test(form.phone.replace(/\D/g, ''))) nextErrors.phone = t('Enter a valid 10- or 11-digit contact number.', 'Enter a valid 10- or 11-digit contact number.')
-    if (form.description.trim().length < 10) nextErrors.description = t('Add at least 10 characters about your service.', 'Add at least 10 characters about your service.')
+    if (!isMarketplaceListing && form.description.trim().length < 10) nextErrors.description = t('Add at least 10 characters about your service.', 'Add at least 10 characters about your service.')
     if (form.website.trim() && !/^https?:\/\//i.test(form.website.trim())) nextErrors.website = t('Website must start with http:// or https://.', 'Website must start with http:// or https://.')
     if (form.image.trim() && !/^https?:\/\//i.test(form.image.trim())) nextErrors.image = t('Image URL must start with http:// or https://.', 'Image URL must start with http:// or https://.')
     setErrors(nextErrors)
@@ -216,14 +217,14 @@ export default function SubmitBusiness({ navigation, route }: any) {
             {formFields.map(([field, label]) => <View key={field} style={styles.field}><Text style={styles.fieldLabel}>{t(label, ({ name: 'పేరు', phone: 'మొబైల్ నంబర్', address: 'ప్రాంతం / స్థానం', price: 'ధర', facing: 'ప్లాట్ ముఖదిశ', website: 'వెబ్‌సైట్ (ఐచ్ఛికం)' } as Record<string, string>)[field] || label)}{field !== 'website' && field !== 'facing' ? ' *' : ''}</Text><FocusTextInput style={[styles.input, errors[field] && styles.inputError]} placeholder={t(label, ({ name: 'పేరు నమోదు చేయండి', phone: 'మొబైల్ నంబర్ నమోదు చేయండి', address: 'ప్రాంతం / స్థానం నమోదు చేయండి', price: 'ధర నమోదు చేయండి', facing: 'ప్లాట్ ముఖదిశ నమోదు చేయండి', website: 'వెబ్‌సైట్ నమోదు చేయండి' } as Record<string, string>)[field] || label)} placeholderTextColor="#888" value={form[field]} onChangeText={(value) => update(field, value)} keyboardType={field === 'phone' ? 'phone-pad' : field === 'price' ? 'numeric' : field === 'website' ? 'url' : 'default'} autoCapitalize={field === 'website' ? 'none' : 'words'} />{errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}</View>)}
             {isSuperAdmin && <View style={styles.field}><Text style={styles.fieldLabel}>{t('Telugu display name (optional)', 'తెలుగు ప్రదర్శన పేరు (ఐచ్ఛికం)')}</Text><FocusTextInput style={styles.input} placeholder={t('Enter the Telugu business name', 'తెలుగు వ్యాపార పేరు నమోదు చేయండి')} placeholderTextColor="#888" value={form.nameTe} onChangeText={(value) => update('nameTe', value)} /></View>}
             <View style={styles.field}><Text style={styles.fieldLabel}>{t('Category', 'Category')} *</Text><View style={styles.categoryOptions}>{availableCategories.map((category) => <Pressable key={category.id} style={[styles.categoryOption, form.categoryId === category.id && styles.categoryOptionActive]} onPress={() => setForm((current) => ({ ...current, categoryId: category.id, categoryName: category.name }))}><Text style={styles.categoryOptionText}>{categoryLabel(category.name)}</Text></Pressable>)}</View>{errors.categoryName && <Text style={styles.errorText}>{errors.categoryName}</Text>}</View>
-            {isSuperAdmin ? <>
+            {(isSuperAdmin || isMarketplaceListing) ? <>
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>{t('Main photo', 'Main photo')}</Text>
+                <Text style={styles.fieldLabel}>{t('Main photo (optional)', 'ప్రధాన ఫోటో (ఐచ్ఛికం)')}</Text>
                 {form.image ? <View style={styles.coverPreview}><Image source={{ uri: form.image }} style={styles.coverImage} /><Pressable style={styles.removePhoto} onPress={() => update('image', '')}><Text style={styles.removePhotoText}>{t('Remove', 'Remove')}</Text></Pressable></View> : null}
                 <Pressable style={[styles.photoButton, isUploadingImages && styles.disabled]} disabled={isUploadingImages} onPress={() => pickListingImages('cover')}><Text style={styles.photoButtonText}>{isUploadingImages ? t('Uploading...', 'Uploading...') : t(form.image ? 'Replace main photo' : 'Choose main photo', form.image ? 'Replace main photo' : 'Choose main photo')}</Text></Pressable>
               </View>
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>{t('Gallery photos', 'Gallery photos')} ({galleryImages.length}/10)</Text>
+                <Text style={styles.fieldLabel}>{t('Gallery photos (optional)', 'గ్యాలరీ ఫోటోలు (ఐచ్ఛికం)')} ({galleryImages.length}/10)</Text>
                 {galleryImages.length > 0 ? <View style={styles.galleryGrid}>{galleryImages.map((imageUrl) => <View key={imageUrl} style={styles.galleryPreview}><Image source={{ uri: imageUrl }} style={styles.galleryImage} /><Pressable style={styles.galleryRemove} onPress={() => removeGalleryImage(imageUrl)}><Text style={styles.galleryRemoveText}>×</Text></Pressable></View>)}</View> : null}
                 <Pressable style={[styles.photoButton, (isUploadingImages || galleryImages.length >= 10) && styles.disabled]} disabled={isUploadingImages || galleryImages.length >= 10} onPress={() => pickListingImages('gallery')}><Text style={styles.photoButtonText}>{isUploadingImages ? t('Uploading...', 'Uploading...') : t('Add gallery photos', 'Add gallery photos')}</Text></Pressable>
               </View>

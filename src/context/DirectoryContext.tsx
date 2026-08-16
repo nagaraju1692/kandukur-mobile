@@ -22,6 +22,7 @@ export type Business = {
   gallery?: string[]
   status?: string
   submittedBy?: string
+  createdAt?: string
 }
 export type Announcement = {
   id: string
