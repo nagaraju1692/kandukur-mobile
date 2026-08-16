@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import BottomNav from './BottomNav'
 import MobileHeader from './MobileHeader'
 import { getBusinessImage } from '../utils/categoryImages'
@@ -9,6 +9,7 @@ import { useNearby } from '../context/NearbyContext'
 import { useDirectory } from '../context/DirectoryContext'
 import { buildGoogleMapsDirectionsUrl } from '../services/api'
 import { colors } from '../ui/theme'
+import FocusTextInput from '../ui/FocusTextInput'
 
 export default function Search({ navigation, route }: any) {
   const [query, setQuery] = useState(route.params?.query || '')
@@ -30,7 +31,7 @@ export default function Search({ navigation, route }: any) {
         <View style={styles.pageHeading}><Pressable style={styles.backButton} onPress={() => navigation.goBack()}><Text style={styles.backText}>←</Text></Pressable><View><Text style={styles.kicker}>{t('SEARCH', 'శోధన')}</Text><Text style={styles.title}>{t('Find places', 'ప్రదేశాలను కనుగొనండి')}</Text></View></View>
         <View style={styles.searchBar}>
           <Text style={styles.searchIcon}>🔍</Text>
-          <TextInput
+          <FocusTextInput
             value={query}
             onChangeText={setQuery}
             placeholder={t('Search businesses, categories...', 'వ్యాపారాలు, వర్గాలను శోధించండి...')}

@@ -28,6 +28,7 @@ import { NearbyProvider } from './src/context/NearbyContext';
 import { SubmittedListingsProvider } from './src/context/SubmittedListingsContext';
 import SubmitBusiness from './src/screens/SubmitBusiness';
 import Feedback from './src/screens/Feedback';
+import BusTimetable from './src/screens/BusTimetable';
 import { DirectoryProvider } from './src/context/DirectoryContext';
 import { recordAppUsage } from './src/services/api';
 import { DISMISSED_VERSION_KEY, fetchLatestUpdate } from './src/services/updateCheck';
@@ -125,6 +126,7 @@ function AppRoot() {
                 <Stack.Screen name="About" component={About} />
                 <Stack.Screen name="SubmitBusiness" component={SubmitBusiness} />
                 <Stack.Screen name="Feedback" component={Feedback} />
+                <Stack.Screen name="BusTimetable" component={BusTimetable} />
               </Stack.Navigator>
                     </NavigationContainer>
                     </SubmittedListingsProvider>

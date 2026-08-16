@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native'
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import BottomNav from './BottomNav'
 import { getBusinessImage, getCategoryImage } from '../utils/categoryImages'
 import MobileHeader from './MobileHeader'
@@ -11,6 +11,7 @@ import { useDirectory } from '../context/DirectoryContext'
 import DirectoryState from './DirectoryState'
 import { colors } from '../ui/theme'
 import { fetchGoldRate, fetchWeather, GoldRate, WeatherReport } from '../services/api'
+import FocusTextInput from '../ui/FocusTextInput'
 
 const homeCategoryIds = ['1', '2', '3', '4', '21', '22', '6', '7']
 const weatherImageUrl = 'https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?auto=format&fit=crop&w=700&q=85'
@@ -119,7 +120,7 @@ export default function Home({ navigation }: any) {
         <DirectoryState loading={loading} error={error} onRetry={retry} />
         <View style={styles.searchBar}>
           <Text style={styles.searchIcon}>🔍</Text>
-          <TextInput
+          <FocusTextInput
             style={styles.searchInput}
             placeholder={t('Search...', 'శోధించండి...')}
             placeholderTextColor="#5F6070"

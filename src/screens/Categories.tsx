@@ -51,7 +51,7 @@ function CategoryThumbnail({ name }: { name: string }) {
 export default function Categories({ navigation }: any) {
   const { t, category: categoryLabel } = useLanguage()
   const { categories, businesses, loading, error, retry } = useDirectory()
-  const { favorites } = useAuth()
+  const { favorites, isLoggedIn } = useAuth()
   const [listingFilter, setListingFilter] = useState<'all' | 'withListings' | 'empty' | 'favorites'>('all')
   const [showFilterOptions, setShowFilterOptions] = useState(false)
   const rootCategories = categories
@@ -62,7 +62,16 @@ export default function Categories({ navigation }: any) {
       if (listingFilter === 'favorites') return categoryBusinesses.some((business) => favorites.includes(business.id))
       return listingFilter === 'all' || (listingFilter === 'withListings' ? categoryBusinesses.length > 0 : categoryBusinesses.length === 0)
     })
-    .sort((first, second) => categoryPriority.indexOf(first.name) - categoryPriority.indexOf(second.name))
+    .sort((first, second) => {
+      const hasFavorite = (category: typeof first) => {
+        const childIds = categories.filter((child) => child.parentId === category.id).map((child) => child.id)
+        return businesses.some((business) => favorites.includes(business.id) && (business.categoryId === category.id || childIds.includes(business.categoryId)))
+      }
+      if (isLoggedIn && hasFavorite(first) !== hasFavorite(second)) return hasFavorite(first) ? -1 : 1
+      const firstPriority = categoryPriority.indexOf(first.name)
+      const secondPriority = categoryPriority.indexOf(second.name)
+      return (firstPriority < 0 ? Number.MAX_SAFE_INTEGER : firstPriority) - (secondPriority < 0 ? Number.MAX_SAFE_INTEGER : secondPriority)
+    })
 
   return (
     <View style={styles.screen}>
@@ -89,7 +98,7 @@ export default function Categories({ navigation }: any) {
               <Pressable
                 key={category.id}
                 style={styles.card}
-                onPress={() => navigation.navigate('Businesses', { categoryId: category.id })}
+                onPress={() => navigation.navigate(category.name === 'Bus stand' ? 'BusTimetable' : 'Businesses', category.name === 'Bus stand' ? undefined : { categoryId: category.id })}
               >
                 <View style={styles.categoryImageWrap}>
                   <CategoryThumbnail name={category.name} />

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Alert, Image, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, Image, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native'
 import { useAuth } from '../context/AuthContext'
 import { getBusinessImage } from '../utils/categoryImages'
 import BottomNav from './BottomNav'
@@ -11,6 +11,7 @@ import { useDirectory } from '../context/DirectoryContext'
 import DirectoryState from './DirectoryState'
 import { colors } from '../ui/theme'
 import { buildGoogleMapsDirectionsUrl } from '../services/api'
+import FocusTextInput from '../ui/FocusTextInput'
 
 export default function BusinessDetails({ route, navigation }: any) {
   const { id } = route.params || {}
@@ -124,7 +125,7 @@ export default function BusinessDetails({ route, navigation }: any) {
             <View style={styles.reviewHeading}><Text style={styles.reviewTitle}>{t('Write a Review', 'సమీక్ష రాయండి')}</Text><Pressable onPress={() => setShowReviewForm(false)}><Text style={styles.reviewClose}>×</Text></Pressable></View>
             <Text style={styles.reviewPrompt}>{t('Your rating', 'మీ రేటింగ్')}</Text>
             <View style={styles.ratingPicker}>{[1, 2, 3, 4, 5].map((rating) => <Pressable key={rating} onPress={() => setSelectedRating(rating)}><Text style={[styles.ratingStar, rating <= selectedRating && styles.ratingStarSelected]}>★</Text></Pressable>)}</View>
-            <TextInput style={styles.commentInput} multiline placeholder={t('Write your review...', 'మీ సమీక్ష రాయండి...')} placeholderTextColor="#888" value={comment} onChangeText={setComment} />
+            <FocusTextInput style={styles.commentInput} multiline placeholder={t('Write your review...', 'మీ సమీక్ష రాయండి...')} placeholderTextColor="#888" value={comment} onChangeText={setComment} />
             <Pressable style={[styles.submitReview, selectedRating === 0 && styles.submitReviewDisabled]} disabled={selectedRating === 0} onPress={async () => { await submitReview(business.id, selectedRating, comment); setSelectedRating(0); setComment(''); setShowReviewForm(false) }}><Text style={styles.submitReviewText}>{t('Submit review', 'సమీక్ష సమర్పించండి')}</Text></Pressable>
           </View>
         </View>

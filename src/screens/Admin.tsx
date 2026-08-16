@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker'
 import BottomNav from './BottomNav'
@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useSubmittedListings } from '../context/SubmittedListingsContext'
 import { AdminActivityItem, AdminSummary, fetchAdminRecentActivity, fetchAdminSummary, fetchJson, uploadAdminAnnouncementImage } from '../services/api'
+import FocusTextInput from '../ui/FocusTextInput'
 
 type AdminAnnouncement = {
   id: string
@@ -518,7 +519,7 @@ export default function Admin({ navigation }: any) {
                   ['detail', 'Short detail'],
                   ['type', 'Type (optional)'],
                 ] as const).map(([field, label]) => (
-                  <TextInput
+                  <FocusTextInput
                     key={field}
                     style={styles.input}
                     placeholder={t(label, label)}
@@ -559,7 +560,7 @@ export default function Admin({ navigation }: any) {
                 <Pressable style={[styles.uploadButton, uploadingImage && styles.disabled]} onPress={pickAnnouncementImage} disabled={uploadingImage}>
                   <Text style={styles.uploadButtonText}>{uploadingImage ? t('Uploading image...', '?????? ???????? ????????...') : t('Choose image from gallery', '??????? ????? ?????? ?????????')}</Text>
                 </Pressable>
-                <TextInput
+                <FocusTextInput
                   style={styles.input}
                   placeholder={t('Image URL (optional)', 'Image URL (optional)')}
                   value={announcementForm.image}
@@ -567,7 +568,7 @@ export default function Admin({ navigation }: any) {
                   autoCapitalize="none"
                 />
                 {announcementForm.image ? <Image source={{ uri: announcementForm.image }} style={styles.preview} resizeMode="cover" /> : null}
-                <TextInput
+                <FocusTextInput
                   style={[styles.input, styles.textarea]}
                   placeholder={t('Description', '?????')}
                   value={announcementForm.description}
@@ -630,7 +631,7 @@ export default function Admin({ navigation }: any) {
                 <Text style={styles.smallActionText}>{t('Add new', '??????? ?????????')}</Text>
               </Pressable>
             </View>
-            <TextInput
+            <FocusTextInput
               style={styles.listingSearch}
               placeholder={t('Search listings', 'Search listings')}
               placeholderTextColor="#73798E"
@@ -745,7 +746,7 @@ export default function Admin({ navigation }: any) {
           <View style={styles.webDateCard}>
             <Text style={styles.webDateTitle}>{t('Select date', 'తేదీని ఎంచుకోండి')}</Text>
             <Text style={styles.webDateMessage}>{t('Use format YYYY-MM-DD', 'YYYY-MM-DD ఆకృతిని ఉపయోగించండి')}</Text>
-            <TextInput
+            <FocusTextInput
               style={styles.webDateInput}
               value={webDateInput.value}
               onChangeText={(value) => setWebDateInput((current) => current ? { ...current, value } : current)}

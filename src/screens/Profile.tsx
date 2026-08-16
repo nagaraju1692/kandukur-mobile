@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import BottomNav from './BottomNav';
 import MobileHeader from './MobileHeader';
 import { useLanguage } from '../context/LanguageContext';
 import { useSubmittedListings } from '../context/SubmittedListingsContext';
+import FocusTextInput from '../ui/FocusTextInput';
 
 export default function Profile({ navigation }: any) {
   const { user, isLoggedIn, favorites, login, logout } = useAuth();
@@ -77,7 +78,7 @@ export default function Profile({ navigation }: any) {
           <Text style={styles.guestCopy}>{t('Discover everything local', 'స్థానిక సమాచారం అంతా తెలుసుకోండి')}</Text>
 
           <Text style={styles.fieldLabel}>{t('Your name (new users only)', 'మీ పేరు (కొత్త వినియోగదారులకు మాత్రమే)')}</Text>
-          <TextInput
+          <FocusTextInput
             style={[styles.input, loginErrors.name && styles.inputError]}
             placeholder={t('Your name', 'మీ పేరు')}
             value={name}
@@ -86,7 +87,7 @@ export default function Profile({ navigation }: any) {
           />
           {loginErrors.name && <Text style={styles.errorText}>{loginErrors.name}</Text>}
           <Text style={styles.fieldLabel}>{t('Mobile number', 'మొబైల్ నంబర్')} *</Text>
-          <TextInput
+          <FocusTextInput
             style={[styles.input, loginErrors.phone && styles.inputError]}
             placeholder={t('Mobile number', 'మొబైల్ నంబర్')}
             value={phone}

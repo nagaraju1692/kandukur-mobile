@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import MobileHeader from './MobileHeader'
 import BottomNav from './BottomNav'
 import { useLanguage } from '../context/LanguageContext'
 import { useAuth } from '../context/AuthContext'
 import { fetchJson } from '../services/api'
+import FocusTextInput from '../ui/FocusTextInput'
 
 export default function Feedback({ navigation }: any) {
   const { t } = useLanguage()
@@ -53,9 +54,9 @@ export default function Feedback({ navigation }: any) {
             <Text style={styles.intro}>{t('Tell us how we can improve Mana Kandukur.', 'మనా కందుకూరును మెరుగుపరచడానికి మీ అభిప్రాయం చెప్పండి.')}</Text>
             <Text style={styles.label}>{t('Message type', 'సందేశ రకం')}</Text>
             <View style={styles.typeRow}>{(['Feedback', 'Complaint'] as const).map((item) => <Pressable key={item} style={[styles.typeButton, type === item && styles.typeActive]} onPress={() => setType(item)}><Text style={[styles.typeText, type === item && styles.typeActiveText]}>{t(item, item === 'Complaint' ? 'ఫిర్యాదు' : 'అభిప్రాయం')}</Text></Pressable>)}</View>
-            <Text style={styles.label}>{t('Subject', 'విషయం')} *</Text><TextInput style={styles.input} placeholder={t('Enter a subject', 'విషయం నమోదు చేయండి')} placeholderTextColor="#888" value={form.subject} onChangeText={(value) => update('subject', value)} />
-            <Text style={styles.label}>{t('Contact number', 'సంప్రదింపు నంబర్')}</Text><TextInput style={styles.input} placeholder={t('Optional mobile number', 'ఐచ్ఛిక మొబైల్ నంబర్')} placeholderTextColor="#888" value={form.contact} onChangeText={(value) => update('contact', value)} keyboardType="phone-pad" />
-            <Text style={styles.label}>{t('Message', 'సందేశం')} *</Text><TextInput style={[styles.input, styles.multiline]} placeholder={t('Write your message...', 'మీ సందేశాన్ని రాయండి...')} placeholderTextColor="#888" value={form.message} onChangeText={(value) => update('message', value)} multiline />
+            <Text style={styles.label}>{t('Subject', 'విషయం')} *</Text><FocusTextInput style={styles.input} placeholder={t('Enter a subject', 'విషయం నమోదు చేయండి')} placeholderTextColor="#888" value={form.subject} onChangeText={(value) => update('subject', value)} />
+            <Text style={styles.label}>{t('Contact number', 'సంప్రదింపు నంబర్')}</Text><FocusTextInput style={styles.input} placeholder={t('Optional mobile number', 'ఐచ్ఛిక మొబైల్ నంబర్')} placeholderTextColor="#888" value={form.contact} onChangeText={(value) => update('contact', value)} keyboardType="phone-pad" />
+            <Text style={styles.label}>{t('Message', 'సందేశం')} *</Text><FocusTextInput style={[styles.input, styles.multiline]} placeholder={t('Write your message...', 'మీ సందేశాన్ని రాయండి...')} placeholderTextColor="#888" value={form.message} onChangeText={(value) => update('message', value)} multiline />
             {error ? <Text style={styles.error}>{error}</Text> : null}
             <Pressable style={[styles.primary, isSubmitting && styles.disabled]} disabled={isSubmitting} onPress={submit}><Text style={styles.primaryText}>{isSubmitting ? t('Sending...', 'పంపుతోంది...') : t('Send message', 'సందేశం పంపండి')}</Text></Pressable>
           </View>

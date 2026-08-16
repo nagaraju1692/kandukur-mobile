@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Image } from 'react-native'
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View, Image } from 'react-native'
 import { buildGoogleMapsDirectionsUrl } from '../services/api'
 import BottomNav from './BottomNav'
 import MobileHeader from './MobileHeader'
@@ -12,6 +12,7 @@ import { useSubmittedListings } from '../context/SubmittedListingsContext'
 import { useDirectory } from '../context/DirectoryContext'
 import DirectoryState from './DirectoryState'
 import { colors } from '../ui/theme'
+import FocusTextInput from '../ui/FocusTextInput'
 
 const subcategoryIcons: Record<string, string> = {
   Education: '🎓', 'Degree colleges': '🎓', 'Engineering colleges': '🎓', Intermediate: '🎓', 'Polytechnic colleges': '🎓', Schools: '🎓', Hospitals: '✚', 'Medical shops': '✦', Restaurants: '⌂', Lodges: '▣', 'Bus stand': '▤',
@@ -134,11 +135,11 @@ export default function Businesses({ navigation, route }: any) {
           </View>
           <View style={styles.sliderRow}>
             <Text style={styles.sliderLabel}>{t('Min rating', 'కనిష్ఠ రేటింగ్')}: {minRating.toFixed(1)}</Text>
-            <TextInput value={String(minRating)} keyboardType="numeric" onChangeText={(value) => setMinRating(Math.min(5, Math.max(0, Number(value || 0))))} style={styles.sliderInput} />
+            <FocusTextInput value={String(minRating)} keyboardType="numeric" onChangeText={(value) => setMinRating(Math.min(5, Math.max(0, Number(value || 0))))} style={styles.sliderInput} />
           </View>
           <View style={styles.sliderRow}>
             <Text style={styles.sliderLabel}>{t('Distance limit', 'దూర పరిమితి')}: {distanceFilter} km</Text>
-            <TextInput value={String(distanceFilter)} keyboardType="numeric" onChangeText={(value) => setDistanceFilter(Math.min(100, Math.max(1, Number(value || 1))))} style={styles.sliderInput} />
+            <FocusTextInput value={String(distanceFilter)} keyboardType="numeric" onChangeText={(value) => setDistanceFilter(Math.min(100, Math.max(1, Number(value || 1))))} style={styles.sliderInput} />
           </View>
         </View>
         {orderedBusinesses.map((business) => (
