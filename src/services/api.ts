@@ -106,6 +106,30 @@ export function geocodeAddress(address: string): Promise<{ latitude: number; lon
   return run
 }
 
+export function reverseGeocodeCoordinates(latitude: number, longitude: number): Promise<string | null> {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return Promise.resolve(null)
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return Promise.resolve(null)
+
+  const run = geocodeQueue.then(async () => {
+    try {
+      const params = new URLSearchParams({ format: 'jsonv2', lat: String(latitude), lon: String(longitude) })
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params}`, {
+        headers: { Accept: 'application/json', 'User-Agent': 'ManaKandukurApp/1.0' },
+      })
+      if (!response.ok) return null
+      const result = await response.json()
+      return result?.address?.road || result?.address?.village || result?.address?.town || result?.address?.city || result?.display_name || null
+    } catch {
+      return null
+    } finally {
+      await new Promise((resolve) => setTimeout(resolve, GEOCODE_MIN_INTERVAL_MS))
+    }
+  })
+
+  geocodeQueue = run.catch(() => undefined)
+  return run
+}
+
 export function buildGoogleMapsDirectionsUrl(
   destination: { latitude: number | null | undefined; longitude: number | null | undefined; address?: string | null },
   origin?: { latitude: number; longitude: number } | null,
