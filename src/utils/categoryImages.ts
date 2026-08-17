@@ -1,5 +1,5 @@
 const images: Record<string, string> = {
-  'Hospitals': 'https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&w=1200&q=80',
+  'Hospitals & Clinics': 'https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&w=1200&q=80',
   'Medical shops': 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=80',
   'Restaurants': 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1200&q=80',
   'Food Hotels': 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1200&q=80',
@@ -51,6 +51,61 @@ const images: Record<string, string> = {
   'Spoken English': 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=1200&q=80',
   'Driving Schools': 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1200&q=80',
   'Skill Development': 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80',
+  // Shops & Local Businesses
+  'Book Stores': 'https://images.unsplash.com/photo-150784272343-583f20270319?auto=format&fit=crop&w=1200&q=80',
+  'Photo Studios': 'https://images.unsplash.com/photo-1502920917128-1aa500764cbd?auto=format&fit=crop&w=1200&q=80',
+  'Courier Services': 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=1200&q=80',
+  'Kids Toys & Cycles': 'https://images.unsplash.com/photo-1633185032649-8e0718bcad0d?auto=format&fit=crop&w=1200&q=80',
+  'Vehicle Battery Shops': 'https://images.unsplash.com/photo-1486501046311-41f0e6370e1f?auto=format&fit=crop&w=1200&q=80',
+  'Key & Lock Repair': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=1200&q=80',
+  'Painting & Hardware': 'https://images.unsplash.com/photo-1579884838548-f3e3c1e1e4f0?auto=format&fit=crop&w=1200&q=80',
+  'Dry Fruit Stores': 'https://images.unsplash.com/photo-1585515207836-b3f86e599e0c?auto=format&fit=crop&w=1200&q=80',
+  'Mobile & Accessories': 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1200&q=80',
+  'Fireworks & Crackers': 'https://images.unsplash.com/photo-1519451241446-180cf6fabf4a?auto=format&fit=crop&w=1200&q=80',
+  'Iron & Grill Suppliers': 'https://images.unsplash.com/photo-1578500494198-246f612d03b3?auto=format&fit=crop&w=1200&q=80',
+  'Clothing & Tailors': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=1200&q=80',
+  // Home & Technical Services
+  'Carpentry Services': 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80',
+  'AC Services': 'https://images.unsplash.com/photo-1585771724684-38269d6639fd?auto=format&fit=crop&w=1200&q=80',
+  'Washing Machine Repair': 'https://images.unsplash.com/photo-1587974007375-cd277c2a9e38?auto=format&fit=crop&w=1200&q=80',
+  'Event Caterers': 'https://images.unsplash.com/photo-1555244637-c5d96dbf3e66?auto=format&fit=crop&w=1200&q=80',
+  'WiFi & Internet Services': 'https://images.unsplash.com/photo-1600585152915-d92dbb6b0db0?auto=format&fit=crop&w=1200&q=80',
+  'Tractor Mechanics': 'https://images.unsplash.com/photo-1574444847212-c3d71556f55e?auto=format&fit=crop&w=1200&q=80',
+  // Government & Public Services
+  'MeeSeva Centers': 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&q=80',
+  'Aadhaar Centers': 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&q=80',
+  'Sachivalayams': 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=80',
+  'Court & Legal Services': 'https://images.unsplash.com/photo-1589829085046-3d562c2a2b9c?auto=format&fit=crop&w=1200&q=80',
+  'Electricity & Water Offices': 'https://images.unsplash.com/photo-1473496169904-658ba7c44d8a?auto=format&fit=crop&w=1200&q=80',
+  // Education & Training
+  'Sports Coaching': 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1200&q=80',
+  'Tuition Centers': 'https://images.unsplash.com/photo-1427504494785-cdec0f72edd9?auto=format&fit=crop&w=1200&q=80',
+  'Dance Academies': 'https://images.unsplash.com/photo-1547220328-3bab663a76ad?auto=format&fit=crop&w=1200&q=80',
+  // Travel & Transport
+  'APSRTC Bus Stand': 'https://images.unsplash.com/photo-1570647788417-0f82fb18a6be?auto=format&fit=crop&w=1200&q=80',
+  'Private Travels': 'https://images.unsplash.com/photo-1527786356703-4b100091cd2c?auto=format&fit=crop&w=1200&q=80',
+  'Railway Station': 'https://images.unsplash.com/photo-1570649831066-22d50c50bed2?auto=format&fit=crop&w=1200&q=80',
+  // Religious & Miscellaneous
+  'Priests & Poojaris': 'https://images.unsplash.com/photo-1473496169904-658ba7c44d8a?auto=format&fit=crop&w=1200&q=80',
+  'Swimming Pools': 'https://images.unsplash.com/photo-1576610616656-d3aa5d1f4534?auto=format&fit=crop&w=1200&q=80',
+  'Other Services': 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80',
+  // Tourism & Attractions
+  'Ramayapatnam Beach': 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
+  'Pakala Lake': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=80',
+  'Etha Mokkala': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=80',
+  'Chirala Beach': 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
+  // Finance & Utilities
+  'Banks & ATMs': 'https://images.unsplash.com/photo-1556740729-b8a9ad5cb316?auto=format&fit=crop&w=1200&q=80',
+  'Insurance Offices': 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&q=80',
+  // Parent Categories
+  'Shops & Local Businesses': 'https://images.unsplash.com/photo-1555636222-cae831c7a47f?auto=format&fit=crop&w=1200&q=80',
+  'Home & Technical Services': 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
+  'Government & Public Services': 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=80',
+  'Education & Training': 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80',
+  'Travel & Transport': 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1200&q=80',
+  'Religious & Miscellaneous': 'https://images.unsplash.com/photo-1473496169904-658ba7c44d8a?auto=format&fit=crop&w=1200&q=80',
+  'Tourism & Attractions': 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1200&q=80',
+  'Finance & Utilities': 'https://images.unsplash.com/photo-1556740729-b8a9ad5cb316?auto=format&fit=crop&w=1200&q=80',
 }
 
 const defaultImage = 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=80'

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, Linking } from 'react-native'
 import BottomNav from './BottomNav'
 import { getBusinessImage, getCategoryImage } from '../utils/categoryImages'
 import MobileHeader from './MobileHeader'
@@ -12,6 +12,8 @@ import DirectoryState from './DirectoryState'
 import { colors } from '../ui/theme'
 import { fetchGoldRate, fetchWeather, GoldRate, WeatherReport } from '../services/api'
 import FocusTextInput from '../ui/FocusTextInput'
+import { fetchLatestUpdate, AppUpdateInfo, DISMISSED_VERSION_KEY } from '../services/updateCheck'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const homeCategoryIds = ['1', '2', '3', '4', '21', '22', '6', '7']
 const weatherImageUrl = 'https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?auto=format&fit=crop&w=700&q=85'
@@ -67,6 +69,8 @@ export default function Home({ navigation }: any) {
   const [selectedUtility, setSelectedUtility] = useState<'weather' | 'gold' | null>(null)
   const [popularBusinesses, setPopularBusinesses] = useState<any[]>([])
   const [selectedUpdate, setSelectedUpdate] = useState<typeof updates[number] | null>(null)
+  const [appUpdate, setAppUpdate] = useState<AppUpdateInfo | null>(null)
+  const [dismissedUpdateVersion, setDismissedUpdateVersion] = useState<string | null>(null)
   const announcementRailRef = useRef<ScrollView | null>(null)
   const announcementIndexRef = useRef(0)
   const { width } = useWindowDimensions()
@@ -75,6 +79,25 @@ export default function Home({ navigation }: any) {
   const categoryCardWidth = (width - horizontalPadding * 2 - 12) / 2
 
   useEffect(() => { setPopularBusinesses(localPopularBusinesses(businesses)) }, [businesses])
+
+  // Check for app updates on mount
+  useEffect(() => {
+    let active = true
+    const checkForUpdates = async () => {
+      try {
+        const dismissed = await AsyncStorage.getItem(DISMISSED_VERSION_KEY)
+        setDismissedUpdateVersion(dismissed)
+        const update = await fetchLatestUpdate()
+        if (active && update && update.version !== dismissed) {
+          setAppUpdate(update)
+        }
+      } catch (error) {
+        console.log('Update check failed:', error)
+      }
+    }
+    checkForUpdates()
+    return () => { active = false }
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -275,6 +298,40 @@ export default function Home({ navigation }: any) {
         </View>
       </Modal>
       <BottomNav navigation={navigation} active="Home" />
+      <Modal visible={appUpdate !== null && appUpdate?.version !== dismissedUpdateVersion} transparent animationType="fade" onRequestClose={() => setAppUpdate(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.updateModal}>
+            <View style={styles.updateModalHeader}>
+              <Text style={styles.updateModalTitle}>🎉 {t('New Update Available', 'క్రొత్త అప్‌డేట్ అందుబాటులో ఉంది')}</Text>
+              <Pressable onPress={async () => {
+                if (appUpdate?.version) {
+                  await AsyncStorage.setItem(DISMISSED_VERSION_KEY, appUpdate.version)
+                  setDismissedUpdateVersion(appUpdate.version)
+                }
+                setAppUpdate(null)
+              }}>
+                <Text style={styles.updateModalClose}>×</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.updateModalVersion}>{t('Version', 'సంస్కరణ')} {appUpdate?.version}</Text>
+            <Text style={styles.updateModalNotes}>{appUpdate?.releaseNotes || t('Check GitHub for details', 'వివరాల కోసం GitHub ను చెక్ చేయండి')}</Text>
+            <View style={styles.updateModalActions}>
+              <Pressable
+                style={styles.updateModalButton}
+                onPress={() => appUpdate?.downloadUrl && Linking.openURL(appUpdate.downloadUrl)}
+              >
+                <Text style={styles.updateModalButtonText}>{t('Download APK', 'APK డౌన్‌లోడ్ చేయండి')}</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.updateModalButton, styles.updateModalButtonSecondary]}
+                onPress={() => appUpdate?.releaseUrl && Linking.openURL(appUpdate.releaseUrl)}
+              >
+                <Text style={styles.updateModalButtonTextSecondary}>{t('View Release', 'విడుదల చూడండి')}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -458,4 +515,15 @@ const styles = StyleSheet.create({
   reviewCount: { color: '#5E5A5A', fontWeight: '500' },
   businessAddress: { marginTop: 9, color: '#676263', fontSize: 13, lineHeight: 18 },
   businessDistance: { marginTop: 4, color: '#4D8052', fontSize: 11, fontWeight: '700' },
+  updateModal: { marginHorizontal: 20, paddingVertical: 24, paddingHorizontal: 18, backgroundColor: '#FFF', borderRadius: 20, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 5 },
+  updateModalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  updateModalTitle: { flex: 1, color: '#202332', fontSize: 18, fontWeight: '800' },
+  updateModalClose: { color: '#999', fontSize: 28, fontWeight: '300' },
+  updateModalVersion: { color: '#5661B8', fontSize: 14, fontWeight: '800', marginBottom: 12 },
+  updateModalNotes: { color: '#5F5B58', fontSize: 14, lineHeight: 20, marginBottom: 20 },
+  updateModalActions: { flexDirection: 'column', gap: 10 },
+  updateModalButton: { paddingVertical: 14, paddingHorizontal: 16, backgroundColor: '#5661B8', borderRadius: 10, alignItems: 'center' },
+  updateModalButtonText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  updateModalButtonSecondary: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#5661B8' },
+  updateModalButtonTextSecondary: { color: '#5661B8', fontSize: 16, fontWeight: '800' },
 })

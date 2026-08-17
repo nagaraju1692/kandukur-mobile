@@ -16,7 +16,7 @@ import FocusTextInput from '../ui/FocusTextInput'
 
 const subcategoryIcons: Record<string, string> = {
   Education: '🎓', 'Degree colleges': '🎓', 'Engineering colleges': '🎓', Intermediate: '🎓', 'Polytechnic colleges': '🎓', Schools: '🎓', Hospitals: '✚', 'Medical shops': '✦', Restaurants: '⌂', Lodges: '▣', 'Bus stand': '▤',
-  'Police station': '⌁', Temples: '◉', Banks: '₹', 'Movie Theaters': '▶', 'Shopping clothes': '◈', 'Retail marts': '▦',
+  'Police station': '⌁', Temples: '◉', Banks: '🏦', 'Banks & ATMs': '🏧', 'Movie Theaters': '▶', 'Shopping clothes': '◈', 'Retail marts': '▦',
   'Beauty clinics': '✧', 'Real Estate': '🏘️', Agriculture: '🌾', 'Food & Meat Markets': '🥬', 'Rental Transport': '🚚',
   'Tourist Places': '🗺️', 'Rental Houses': '🏠', 'Construction Materials': '🧱', 'Government Offices': '🏛️', 'Buy & Sell': '🏷️',
   'Common Utilities': '🧰', 'ATM Centers': '🏧', 'Petrol Pumps': '⛽', 'Gas Centers': '🔥', 'EV Charging Stations': '🔌', 'Public Toilets': '🚻',
@@ -32,6 +32,12 @@ const subcategoryIcons: Record<string, string> = {
 }
 
 const directPostingCategoryNames = new Set(['Real Estate', 'Rental Transport', 'Construction Materials', 'Buy & Sell'])
+
+// Map old category names to new subcategory names for backward compatibility
+const categoryNameMappings: Record<string, string[]> = {
+  'Finance & Utilities': ['Banks'],
+  'Banks & ATMs': ['Banks'],
+}
 
 const getSubcategoryIcon = (name: string) => {
   const trimmed = (name || '').trim()
@@ -59,9 +65,11 @@ export default function Businesses({ navigation, route }: any) {
   const supportsDirectPosting = Boolean(category && (directPostingCategoryNames.has(category.name) || directPostingCategoryNames.has(parentCategory?.name || '')))
   const isBuyAndSellCategory = category?.name === 'Buy & Sell' || parentCategory?.name === 'Buy & Sell'
   const subcategoryIds = categoryId ? categories.filter(item => item.parentId === categoryId).map(item => item.id) : []
+  const mappedCategoryNames = category?.name ? (categoryNameMappings[category.name] || []) : []
+  const mappedCategoryIds = mappedCategoryNames.length > 0 ? categories.filter(item => mappedCategoryNames.includes(item.name)).map(item => item.id) : []
   const allBusinesses: any[] = businesses
   const selectedBusinesses: any[] = allBusinesses.filter(
-    business => !categoryId || business.categoryId === categoryId || subcategoryIds.includes(business.categoryId),
+    business => !categoryId || business.categoryId === categoryId || subcategoryIds.includes(business.categoryId) || mappedCategoryIds.includes(business.categoryId) || mappedCategoryNames.includes(business.categoryName),
   )
   const filteredBusinesses = selectedBusinesses.filter((business) => {
     const reviewStats = getReviewStats(business.id)
@@ -95,17 +103,24 @@ export default function Businesses({ navigation, route }: any) {
         </View>
 
         <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-          {childCategories.map(item => (
+          {childCategories.map(item => {
+            const mappedCategoryNames = categoryNameMappings[item.name] || []
+            const childCount = businesses.filter((business) => 
+              business.categoryId === item.id || 
+              mappedCategoryNames.includes(business.categoryName)
+            ).length
+            return (
             <Pressable
               key={item.id}
               style={styles.listRow}
-              onPress={() => navigation.navigate('Businesses', { categoryId: item.id })}
+              onPress={() => navigation.push('Businesses', { categoryId: item.id })}
             >
               <View style={styles.subcategoryIcon}><Text style={styles.subcategoryIconText}>{getSubcategoryIcon(item.name)}</Text></View>
-              <View style={styles.subcategoryCopy}><Text style={styles.listRowText}>{categoryLabel(item.name)}</Text><Text style={styles.subcategoryCount}>{businesses.filter((business) => business.categoryId === item.id).length} {t('Listings', 'లిస్టింగ్‌లు')}</Text></View>
+              <View style={styles.subcategoryCopy}><Text style={styles.listRowText}>{categoryLabel(item.name)}</Text><Text style={styles.subcategoryCount}>{childCount} {t('Listings', 'లిస్టింగ్‌లు')}</Text></View>
               <Text style={styles.listArrow}>›</Text>
             </Pressable>
-          ))}
+            )
+          })}
         </ScrollView>
         <BottomNav navigation={navigation} active="Categories" />
       </View>

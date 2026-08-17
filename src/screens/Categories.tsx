@@ -9,10 +9,15 @@ import { useAuth } from '../context/AuthContext'
 import DirectoryState from './DirectoryState'
 import { colors } from '../ui/theme'
 
+// Map old category names to new subcategory names for backward compatibility
+const categoryNameMappings: Record<string, string[]> = {
+  'Finance & Utilities': ['Banks'],
+}
+
 const icons: Record<string, string> = {
-  Education: '🎓', Hospitals: '✚', 'Medical shops': '✦', Restaurants: '⌂',
+  Education: '🎓', 'Hospitals & Clinics': '✚', 'Medical shops': '✦', Restaurants: '⌂',
   Lodges: '▣', 'Bus stand': '🚌', 'Police station': '🚔', Temples: '🛕',
-  Banks: '🏦', 'Movie Theaters': '▶', 'Shopping clothes': '◈', 'Retail marts': '🛒',
+  'Movie Theaters': '▶', 'Shopping clothes': '◈', 'Retail marts': '🛒',
   'Beauty clinics': '✧', 'RealEstate': '▣', 'Agricultural info': '🌾',
   'Real Estate': '🏘️', Agriculture: '🌾', 'Food & Meat Markets': '🥬', 'Rental Transport': '🚚',
   'Tourist Places': '🗺️', 'Rental Houses': '🏠', 'Construction Materials': '🧱', 'Government Offices': '🏛️',
@@ -27,17 +32,73 @@ const icons: Record<string, string> = {
   'Training Institutions': '🎓', 'Computer Training': '💻', 'Spoken English': '🗣️', 'Driving Schools': '🚗', 'Skill Development': '🧰',
   Plumber: '🔧', Electricians: '⚡', 'Tiles Work': '◼️', 'False Ceiling': '🏠', 'Bore Points': '💧', 'Bike Show Rooms': '🏍️',
   'Car Show Rooms': '🚘', 'Vehicle Wash': '🚿',
+  // New parent categories
+  'Shops & Local Businesses': '🏪',
+  'Home & Technical Services': '🛠️',
+  'Government & Public Services': '🏛️',
+  'Education & Training': '🎓',
+  'Travel & Transport': '🚍',
+  'Religious & Miscellaneous': '🧘',
+  'Tourism & Attractions': '🌍',
+  'Finance & Utilities': '🏦',
+  // New child categories - Shops & Local Businesses
+  'Book Stores': '�', 'Photo Studios': '📷', 'Courier Services': '📦', 'Kids Toys & Cycles': '🚲',
+  'Vehicle Battery Shops': '🔋', 'Key & Lock Repair': '🔑', 'Painting & Hardware': '🎨', 'Dry Fruit Stores': '🥕',
+  'Mobile & Accessories': '📱', 'Fireworks & Crackers': '✨', 'Iron & Grill Suppliers': '⚒️', 'Clothing & Tailors': '✂️',
+  // Home & Technical Services
+  'Carpentry Services': '🪚', 'AC Services': '❄️', 'Washing Machine Repair': '🔧', 'Event Caterers': '🍽️',
+  'WiFi & Internet Services': '📡', 'Tractor Mechanics': '🔧',
+  // Government & Public Services
+  'MeeSeva Centers': '🏢', 'Aadhaar Centers': '🆔', 'Sachivalayams': '🏛️', 'Court & Legal Services': '⚖️', 'Electricity & Water Offices': '⚡',
+  // Education & Training
+  'Sports Coaching': '⚽', 'Tuition Centers': '📖', 'Dance Academies': '💃',
+  // Travel & Transport
+  'APSRTC Bus Stand': '🚌', 'Private Travels': '🚐', 'Railway Station': '🚂',
+  // Religious & Miscellaneous
+  'Priests & Poojaris': '🙏', 'Swimming Pools': '🏊', 'Other Services': '⚙️',
+  // Tourism & Attractions
+  'Ramayapatnam Beach': '🏖️', 'Pakala Lake': '🌊', 'Etha Mokkala': '⛰️', 'Chirala Beach': '🏖️',
+  // Finance & Utilities
+  'Banks & ATMs': '🏧', 'Insurance Offices': '📋',
 }
 
 const categoryPriority = [
-  'Education', 'Hospitals', 'Medical shops', 'Restaurants', 'Real Estate', 'Agriculture',
+  'Education', 'Hospitals & Clinics', 'Medical shops', 'Restaurants', 'Real Estate', 'Agriculture',
   'Food & Meat Markets', 'Rental Transport', 'Rental Houses', 'Construction Materials',
   'Buy & Sell',
   'Common Utilities',
   'Training Institutions', 'Government Offices', 'Manpower Services', 'Show Rooms',
   'Bike & Car Mechanics', 'Tourist Places', 'Cold Storages', 'Lodges', 'Bus stand',
-  'Police station', 'Temples', 'Banks', 'Beauty clinics', 'Movie Theaters', 'Shopping clothes',
+  'Police station', 'Temples', 'Beauty clinics', 'Movie Theaters', 'Shopping clothes',
   'Retail marts', 'Wine shops', 'Jewellery shops',
+  // Main parent categories
+  'Shops & Local Businesses',
+  'Home & Technical Services',
+  'Government & Public Services',
+  'Education & Training',
+  'Travel & Transport',
+  'Religious & Miscellaneous',
+  'Tourism & Attractions',
+  'Finance & Utilities',
+  // Shops & Local Businesses subcategories
+  'Book Stores', 'Photo Studios', 'Courier Services', 'Kids Toys & Cycles',
+  'Vehicle Battery Shops', 'Key & Lock Repair', 'Painting & Hardware', 'Dry Fruit Stores',
+  'Mobile & Accessories', 'Fireworks & Crackers', 'Iron & Grill Suppliers', 'Clothing & Tailors',
+  // Home & Technical Services subcategories
+  'Carpentry Services', 'AC Services', 'Washing Machine Repair', 'Event Caterers',
+  'WiFi & Internet Services', 'Tractor Mechanics',
+  // Government & Public Services subcategories
+  'MeeSeva Centers', 'Aadhaar Centers', 'Sachivalayams', 'Court & Legal Services', 'Electricity & Water Offices',
+  // Education & Training subcategories
+  'Sports Coaching', 'Tuition Centers', 'Dance Academies',
+  // Travel & Transport subcategories
+  'APSRTC Bus Stand', 'Private Travels', 'Railway Station',
+  // Religious & Miscellaneous subcategories
+  'Priests & Poojaris', 'Swimming Pools', 'Other Services',
+  // Tourism & Attractions subcategories
+  'Ramayapatnam Beach', 'Pakala Lake', 'Etha Mokkala', 'Chirala Beach',
+  // Finance & Utilities subcategories
+  'Banks & ATMs', 'Insurance Offices',
 ]
 
 function CategoryThumbnail({ name }: { name: string }) {
@@ -57,15 +118,27 @@ export default function Categories({ navigation }: any) {
   const rootCategories = categories
     .filter(category => {
       if (category.parentId) return false
+      if (category.name === 'Banks') return false
       const childIds = categories.filter((child) => child.parentId === category.id).map((child) => child.id)
-      const categoryBusinesses = businesses.filter((business) => business.categoryId === category.id || childIds.includes(business.categoryId))
+      const mappedCategoryNames = categoryNameMappings[category.name] || []
+      const categoryBusinesses = businesses.filter((business) => 
+        business.categoryId === category.id || 
+        childIds.includes(business.categoryId) ||
+        mappedCategoryNames.includes(business.categoryName)
+      )
       if (listingFilter === 'favorites') return categoryBusinesses.some((business) => favorites.includes(business.id))
       return listingFilter === 'all' || (listingFilter === 'withListings' ? categoryBusinesses.length > 0 : categoryBusinesses.length === 0)
     })
     .sort((first, second) => {
       const hasFavorite = (category: typeof first) => {
         const childIds = categories.filter((child) => child.parentId === category.id).map((child) => child.id)
-        return businesses.some((business) => favorites.includes(business.id) && (business.categoryId === category.id || childIds.includes(business.categoryId)))
+        const mappedCategoryNames = categoryNameMappings[category.name] || []
+        return businesses.some((business) => 
+          favorites.includes(business.id) && 
+          (business.categoryId === category.id || 
+           childIds.includes(business.categoryId) ||
+           mappedCategoryNames.includes(business.categoryName))
+        )
       }
       if (isLoggedIn && hasFavorite(first) !== hasFavorite(second)) return hasFavorite(first) ? -1 : 1
       const firstPriority = categoryPriority.indexOf(first.name)
@@ -92,7 +165,12 @@ export default function Categories({ navigation }: any) {
         <View style={styles.list}>
           {rootCategories.map((category) => {
             const childIds = categories.filter((child) => child.parentId === category.id).map((child) => child.id)
-            const count = businesses.filter((business) => business.categoryId === category.id || childIds.includes(business.categoryId)).length
+            const mappedCategoryNames = categoryNameMappings[category.name] || []
+            const count = businesses.filter((business) => 
+              business.categoryId === category.id || 
+              childIds.includes(business.categoryId) || 
+              mappedCategoryNames.includes(business.categoryName)
+            ).length
 
             return (
               <Pressable
@@ -223,7 +301,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  categoryIconFallback: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF2EA' },
+  categoryIconFallback: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EFE0D8' },
   categoryIconText: { fontSize: 26 },
   cardBody: { flex: 1,
   },

@@ -14,10 +14,10 @@
       "web"
     ],
     "sdkVersion": "54.0.0",
-    "version": "1.0.4",
+    "version": "1.0.3",
     "android": {
       "package": "com.manakandukur.directory",
-      "versionCode": 5
+      "versionCode": 4
     },
     "extra": {
       "eas": {
