@@ -22,6 +22,7 @@ type NotificationContextValue = {
 
 const NotificationContext = createContext<NotificationContextValue | undefined>(undefined)
 const dismissedKey = 'mana-kandukur-mobile-dismissed-notifications'
+const clearedAtKey = 'mana-kandukur-mobile-notifications-cleared-at'
 const rainCodes = new Set([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99])
 
 function formatRainTime(time: string | Date) {
@@ -64,12 +65,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [notifications, setNotifications] = useState<MobileNotification[]>([])
   const [dismissed, setDismissed] = useState<string[]>([])
   const [dismissedLoaded, setDismissedLoaded] = useState(false)
+  const [clearedAt, setClearedAt] = useState<number | null>(null)
   const [rainNotification, setRainNotification] = useState<MobileNotification | null>(null)
   const { announcements } = useDirectory()
 
   useEffect(() => {
     let active = true
-    AsyncStorage.getItem(dismissedKey).then((value) => {
+    Promise.all([AsyncStorage.getItem(dismissedKey), AsyncStorage.getItem(clearedAtKey)]).then(([value, clearedValue]) => {
       if (!active) return
       try {
         const parsed = value ? JSON.parse(value) : []
@@ -77,6 +79,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       } catch {
         setDismissed([])
       } finally {
+        const parsedClearedAt = clearedValue ? Number(clearedValue) : NaN
+        if (Number.isFinite(parsedClearedAt)) setClearedAt(parsedClearedAt)
         if (active) setDismissedLoaded(true)
       }
     }).catch(() => {
@@ -110,7 +114,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     if (!dismissedLoaded) return
-    const announcementNotifications = announcements.filter((announcement) => !dismissed.includes(`announcement-${announcement.id}`)).map((announcement) => ({
+    const announcementNotifications = announcements.filter((announcement) => {
+      if (dismissed.includes(`announcement-${announcement.id}`)) return false
+      if (clearedAt === null || !announcement.createdAt) return true
+      return new Date(announcement.createdAt).getTime() > clearedAt
+    }).map((announcement) => ({
       id: `announcement-${announcement.id}`,
       title: announcement.title,
       message: `${announcement.detail}.`,
@@ -123,11 +131,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }))
     const weatherNotifications = rainNotification && !dismissed.includes(rainNotification.id) ? [rainNotification] : []
     setNotifications([...weatherNotifications, ...announcementNotifications])
-  }, [announcements, dismissed, dismissedLoaded, rainNotification])
+  }, [announcements, clearedAt, dismissed, dismissedLoaded, rainNotification])
 
   const clearNotifications = async () => {
     const ids = notifications.map((item) => item.id)
+    const clearedTimestamp = Date.now()
     setDismissed((current) => Array.from(new Set([...current, ...ids])))
+    setClearedAt(clearedTimestamp)
+    await AsyncStorage.setItem(clearedAtKey, String(clearedTimestamp)).catch(() => undefined)
     setNotifications([])
   }
 

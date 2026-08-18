@@ -15,17 +15,26 @@ import FocusTextInput from '../ui/FocusTextInput'
 import { fetchLatestUpdate, AppUpdateInfo, DISMISSED_VERSION_KEY } from '../services/updateCheck'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-const homeCategoryIds = ['1', '2', '3', '4', '21', '22', '6', '7']
+const homeCategoryIds = ['1', '4', '21', '22', '6', 'health']
 const weatherImageUrl = 'https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?auto=format&fit=crop&w=700&q=85'
+const weatherModeImages = {
+  rain: 'https://images.unsplash.com/photo-1519692933481-e162a57d6721?auto=format&fit=crop&w=700&q=85',
+  cloud: 'https://images.unsplash.com/photo-1534088568595-a066f410bcda?auto=format&fit=crop&w=700&q=85',
+  heat: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=700&q=85',
+  morning: 'https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?auto=format&fit=crop&w=700&q=85',
+  afternoon: 'https://images.unsplash.com/photo-1499346030926-9a72daac6c63?auto=format&fit=crop&w=700&q=85',
+  evening: 'https://images.unsplash.com/photo-1472120435266-53107fd0c44a?auto=format&fit=crop&w=700&q=85',
+}
 const goldImageUrl = 'https://images.unsplash.com/photo-1610375461246-83df859d849d?auto=format&fit=crop&w=700&q=85'
-const announcementCardWidth = 252
 const announcementCardGap = 12
+const popularGroups = [
+  ['hospitals-clinics', 'Hospitals', 'Hospitals & Clinics'],
+  ['medical-shops', 'Medical shops', 'Medical Shops'],
+  ['restaurants-hotels', 'Restaurants', 'Restaurants & Hotels'],
+]
 
 function localPopularBusinesses(businesses: any[]) {
-  return ['2', '4', '3'].flatMap((categoryId) => businesses
-    .filter((business) => business.categoryId === categoryId)
-    .sort((first, second) => Number(!first.address.toLowerCase().includes('kandukur')) - Number(!second.address.toLowerCase().includes('kandukur')))
-    .slice(0, 2))
+  return popularGroups.flatMap((group) => businesses.filter((business) => group.includes(business.categoryId) || group.includes(business.categoryName)))
 }
 
 function weatherIcon(code: number) {
@@ -33,6 +42,18 @@ function weatherIcon(code: number) {
   if (code >= 61 || (code >= 51 && code <= 57) || (code >= 80 && code <= 82)) return '🌧'
   if (code >= 2) return '☁'
   return '☀'
+}
+
+function getWeatherMode(weather: WeatherReport | null, time: Date) {
+  const hourlyCodes = weather?.hourly.map((hour) => hour.code) || []
+  const currentCode = weather?.daily[0]?.code ?? 0
+  if (hourlyCodes.some((code) => code >= 51 && code <= 99) || (currentCode >= 51 && currentCode <= 99)) return 'rain' as const
+  if (currentCode >= 1 && currentCode <= 3) return 'cloud' as const
+  if (weather && Number.parseInt(weather.temp, 10) >= 35) return 'heat' as const
+  const hour = time.getHours()
+  if (hour < 12) return 'morning' as const
+  if (hour < 17) return 'afternoon' as const
+  return 'evening' as const
 }
 
 function HomeCategoryImage({ name }: { name: string }) {
@@ -64,6 +85,7 @@ export default function Home({ navigation }: any) {
   }
   const [search, setSearch] = useState('')
   const [weather, setWeather] = useState<WeatherReport | null>(null)
+  const [currentTime, setCurrentTime] = useState(new Date())
   const [gold, setGold] = useState<GoldRate | null>(null)
   const [utilityLoading, setUtilityLoading] = useState(true)
   const [selectedUtility, setSelectedUtility] = useState<'weather' | 'gold' | null>(null)
@@ -77,6 +99,11 @@ export default function Home({ navigation }: any) {
   const isPhone = width < 600
   const horizontalPadding = isPhone ? 18 : 24
   const categoryCardWidth = (width - horizontalPadding * 2 - 12) / 2
+  const announcementCardWidth = isPhone ? (width - horizontalPadding * 2 - announcementCardGap) / 2 : 252
+  const weatherMode = getWeatherMode(weather, currentTime)
+  const popularNearYou = popularGroups.flatMap((group) => sortNearest(
+    popularBusinesses.filter((business) => group.includes(business.categoryId) || group.includes(business.categoryName)),
+  ).slice(0, 2))
 
   useEffect(() => { setPopularBusinesses(localPopularBusinesses(businesses)) }, [businesses])
 
@@ -97,6 +124,11 @@ export default function Home({ navigation }: any) {
     }
     checkForUpdates()
     return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60 * 1000)
+    return () => clearInterval(timer)
   }, [])
 
   useEffect(() => {
@@ -160,11 +192,13 @@ export default function Home({ navigation }: any) {
 
         <View style={styles.utilityRow}>
           <Pressable style={styles.utilityCard} onPress={() => setSelectedUtility('weather')}>
-            <Image source={{ uri: weatherImageUrl }} style={styles.utilityImage} resizeMode="cover" />
+            <Image source={{ uri: weatherModeImages[weatherMode] || weatherImageUrl }} style={styles.utilityImage} resizeMode="cover" />
             <View style={styles.utilityCopy}>
               <Text style={[styles.utilityLabel, styles.weatherLabel]}>{t('TODAY’S WEATHER', 'ఈరోజు వాతావరణం')}</Text>
+              <Text style={styles.weatherTime}>{currentTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</Text>
               <Text style={[styles.utilityValue, styles.weatherValue]}>{weather?.temp || (utilityLoading ? t('Loading…', 'లోడ్ అవుతోంది…') : t('Unavailable', 'అందుబాటులో లేదు'))}</Text>
-              <Text style={styles.utilityText}>{weather ? `${weather.condition} · ${weather.humidity}` : t('Kandukur area', 'కందుకూరు ప్రాంతం')}</Text>
+              <Text style={styles.weatherStatus}>{weather ? `${weatherIcon(weather.daily[0]?.code ?? 0)} ${weather.condition}` : t('Weather status unavailable', 'వాతావరణ సమాచారం అందుబాటులో లేదు')}</Text>
+              <Text style={styles.utilityText}>{weather ? weather.humidity : t('Kandukur area', 'కందుకూరు ప్రాంతం')}</Text>
             </View>
           </Pressable>
           <Pressable style={styles.utilityCard} onPress={() => setSelectedUtility('gold')}>
@@ -194,7 +228,7 @@ export default function Home({ navigation }: any) {
               {announcementItems.map((update) => (
                 <Pressable
                   key={update.id}
-                  style={styles.updateRailCard}
+                  style={[styles.updateRailCard, { width: announcementCardWidth }]}
                   onPress={() => setSelectedUpdate(update)}
                 >
                   <Image source={{ uri: update.image }} style={styles.updateImage} resizeMode="cover" />
@@ -227,7 +261,7 @@ export default function Home({ navigation }: any) {
 
         <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>{t('Popular Near You', 'మీకు సమీపంలోని ప్రసిద్ధ ప్రదేశాలు')}</Text><Pressable style={styles.viewAllButton} onPress={() => navigation.navigate('Categories')}><Text style={styles.viewAll}>{t('View all', 'అన్నీ చూడండి')}</Text></Pressable></View>
         <View style={styles.popularList}>
-          {sortNearest(popularBusinesses).map((business) => {
+          {popularNearYou.map((business) => {
             const isFavorite = favorites.includes(business.id)
             const reviewStats = getReviewStats(business.id)
             const imageSource = getBusinessImage(business.image, business.categoryName)
@@ -255,7 +289,7 @@ export default function Home({ navigation }: any) {
         <View style={styles.modalBackdrop}>
           <View style={styles.utilityModal}>
             <View style={styles.utilityModalHero}>
-              <Image source={{ uri: selectedUtility === 'weather' ? weatherImageUrl : goldImageUrl }} style={styles.utilityModalHeroImage} resizeMode="cover" />
+              <Image source={{ uri: selectedUtility === 'weather' ? (weatherModeImages[weatherMode] || weatherImageUrl) : goldImageUrl }} style={styles.utilityModalHeroImage} resizeMode="cover" />
               <View style={styles.utilityModalHeroShade} />
               <Pressable style={styles.utilityModalClose} onPress={() => setSelectedUtility(null)}><Text style={styles.utilityModalCloseText}>×</Text></Pressable>
               <View style={styles.utilityModalHeroCopy}>
@@ -397,6 +431,8 @@ const styles = StyleSheet.create({
   goldLabel: { color: '#9A6500' },
   utilityValue: { marginTop: 3, fontSize: 21, fontWeight: '900' },
   weatherValue: { color: '#164F58' },
+  weatherTime: { color: '#4A5660', fontSize: 11, fontWeight: '800', marginBottom: 2 },
+  weatherStatus: { color: '#45616A', fontSize: 10, fontWeight: '700', marginBottom: 2 },
   utilityText: { marginTop: 2, color: '#5D5860', fontSize: 10, lineHeight: 13, fontWeight: '700' },
   goldRateValue: { marginTop: 3, color: '#805100', fontSize: 19, fontWeight: '900' },
   utilityModal: { width: '100%', maxWidth: 340, maxHeight: '88%', overflow: 'hidden', borderRadius: 18, backgroundColor: colors.surface },
@@ -445,7 +481,7 @@ const styles = StyleSheet.create({
   viewAllButton: { minWidth: 76, minHeight: 30, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 6, borderWidth: 1, borderColor: '#B45855', backgroundColor: 'rgba(255,255,255,0.5)' },
   viewAll: { color: '#A44745', fontSize: 12, fontWeight: '800', textAlign: 'center' },
   updateRail: { gap: 12, paddingRight: 8 },
-  updateRailCard: { width: announcementCardWidth, height: 166, overflow: 'hidden', borderRadius: 18, borderWidth: 2, borderColor: '#58D5D2', backgroundColor: '#222' },
+  updateRailCard: { width: 252, height: 166, overflow: 'hidden', borderRadius: 18, borderWidth: 2, borderColor: '#58D5D2', backgroundColor: '#222' },
   updateCard: { width: '100%', overflow: 'hidden', borderRadius: 18, borderWidth: 2, borderColor: '#58D5D2', backgroundColor: '#222' },
   updateCardTall: { height: 188 },
   updateCardShort: { height: 148 },

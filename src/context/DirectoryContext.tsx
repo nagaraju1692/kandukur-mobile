@@ -31,6 +31,7 @@ export type Announcement = {
   description: string
   type: string
   image: string
+  createdAt?: string | null
   startDate?: string | null
   endDate?: string | null
 }

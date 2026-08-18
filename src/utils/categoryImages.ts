@@ -1,6 +1,6 @@
 const images: Record<string, string> = {
   'Hospitals & Clinics': 'https://images.unsplash.com/photo-1512678080530-7760d81f7e50?auto=format&fit=crop&w=1200&q=80&v=2',
-  Health: 'https://images.unsplash.com/photo-1512678080530-7760d81f7e50?auto=format&fit=crop&w=1200&q=80&v=2',
+  Health: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=80&v=4',
   'Diagnostic Lab Centers': 'https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&w=1200&q=80',
   'Radiology Scan Centers': 'https://images.unsplash.com/photo-1559757175-0eb30cd8c063?auto=format&fit=crop&w=1200&q=80',
   'Medical shops': 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=80',
@@ -171,7 +171,6 @@ export function getCategoryImage(categoryName?: string) {
 export function getBusinessImage(image: unknown, categoryName?: string) {
   if (typeof image === 'number') return image
   if (categoryName && normalizeCategoryName(categoryName) === 'temples') return { uri: getCategoryImage(categoryName) }
-  if (categoryName && ['medical shops', 'medical shop'].includes(normalizeCategoryName(categoryName))) return { uri: getCategoryImage('Medical Shops') }
   if (typeof image === 'string' && image.startsWith('http')) return { uri: image }
   return { uri: getCategoryImage(categoryName) }
 }
