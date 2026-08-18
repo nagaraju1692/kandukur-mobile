@@ -29,11 +29,18 @@ function formatRainTime(time: string | Date) {
 }
 
 function createRainNotification(weather: WeatherReport): MobileNotification | null {
-  const rainStart = weather.hourly.findIndex((hour) => rainCodes.has(hour.code))
+  const now = Date.now()
+  const upcomingHours = weather.hourly
+    .map((hour, index) => ({ hour, index }))
+    .filter(({ hour }) => new Date(hour.time).getTime() >= now)
+  const rainStartPosition = upcomingHours.findIndex(({ hour }) => rainCodes.has(hour.code))
+  const rainStart = rainStartPosition < 0 ? -1 : upcomingHours[rainStartPosition].index
   if (rainStart < 0) return null
 
   let rainEnd = rainStart
-  while (rainEnd + 1 < weather.hourly.length && rainCodes.has(weather.hourly[rainEnd + 1].code)) rainEnd += 1
+  while (rainEnd + 1 < weather.hourly.length
+    && new Date(weather.hourly[rainEnd + 1].time).getTime() >= now
+    && rainCodes.has(weather.hourly[rainEnd + 1].code)) rainEnd += 1
   const start = weather.hourly[rainStart]
   const end = weather.hourly[rainEnd]
   const dateKey = start.time.slice(0, 10)
@@ -94,7 +101,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       }
     }
     loadRainAlert()
-    const refresh = setInterval(loadRainAlert, 30 * 60 * 1000)
+    const refresh = setInterval(loadRainAlert, 5 * 60 * 1000)
     return () => {
       active = false
       clearInterval(refresh)
@@ -105,8 +112,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     if (!dismissedLoaded) return
     const announcementNotifications = announcements.filter((announcement) => !dismissed.includes(`announcement-${announcement.id}`)).map((announcement) => ({
       id: `announcement-${announcement.id}`,
-      title: announcement.type === 'movie' ? 'New movie update' : 'New shop opening',
-      message: `${announcement.title} · ${announcement.detail}.`,
+      title: announcement.title,
+      message: `${announcement.detail}.`,
       time: 'New',
       type: announcement.type,
       announcementTitle: announcement.title,

@@ -14,8 +14,8 @@ type LanguageContextValue = {
 const LanguageContext = createContext<LanguageContextValue | undefined>(undefined)
 
 const categoryTranslations: Record<string, string> = {
-  Education: 'విద్య', Hospitals: 'ఆసుపత్రులు', 'Medical shops': 'మెడికల్ షాపులు', Restaurants: 'రెస్టారెంట్లు',
-  Lodges: 'లాడ్జీలు', 'Bus stand': 'బస్ స్టాండ్', 'Police station': 'పోలీస్ స్టేషన్', Temples: 'దేవాలయాలు',
+  Education: 'విద్య', 'Education & Institutions': 'విద్యా సంస్థలు', Health: 'ఆరోగ్యం', Hospitals: 'ఆసుపత్రులు', 'Hospitals & Clinics': 'ఆసుపత్రులు మరియు క్లినిక్‌లు', 'Medical shops': 'మెడికల్ షాపులు', 'Medical Shops': 'మెడికల్ షాపులు', 'Diagnostic Lab Centers': 'డయాగ్నస్టిక్ ల్యాబ్ కేంద్రాలు', 'Radiology Scan Centers': 'రేడియాలజీ స్కాన్ కేంద్రాలు', Restaurants: 'రెస్టారెంట్‌లు', 'Restaurants & Hotels': 'రెస్టారెంట్‌లు & హోటళ్లు',
+  Lodges: 'లాడ్జీలు', 'Bus stand': 'బస్ స్టాండ్', 'Police station': 'పోలీస్ స్టేషన్', 'Police Station': 'పోలీస్ స్టేషన్', '108 Emergency': '108 అత్యవసర సేవ', 'Fire Station': 'అగ్నిమాపక కేంద్రం', Emergency: 'అత్యవసర సేవలు', Temples: 'దేవాలయాలు',
   Banks: 'బ్యాంకులు', 'Beauty clinics': 'బ్యూటీ క్లినిక్స్', 'Movie Theaters': 'సినిమా థియేటర్లు',
   'Shopping clothes': 'బట్టల షాపులు', 'Retail marts': 'రిటైల్ మార్ట్స్', 'Wine shops': 'వైన్ షాపులు',
   'Jewellery shops': 'జువెలరీ షాపులు', RealEstate: 'రియల్ ఎస్టేట్', 'ATM machines': 'ఏటీఎం కేంద్రాలు',
@@ -41,7 +41,22 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     AsyncStorage.setItem('mana-kandukur-mobile-language', language).catch(() => undefined)
   }, [language])
-  const value = useMemo(() => ({ language, setLanguage, t: (english: string, telugu: string) => language === 'te' ? telugu : english, category: (name: string) => language === 'te' ? categoryTranslations[name] || name : name, businessName: (name: string, nameTe?: string) => language === 'te' && nameTe ? nameTe : name }), [language])
+  const value = useMemo(() => ({ language, setLanguage, t: (english: string, telugu: string) => language === 'te' ? telugu : english, category: (name: string) => {
+    const displayName = ({
+      Education: 'Education & Institutions',
+      'Education & Training': 'Education & Sports Training Centers',
+      Hospitals: 'Hospitals & Clinics',
+      'Medical shops': 'Medical Shops',
+      Restaurants: 'Restaurants & Hotels',
+      'Restarent & Hotals': 'Restaurants & Hotels',
+      'Restaurants & Hotals': 'Restaurants & Hotels',
+      Hospitals: 'Hospitals & Clinics',
+      'Hospitals & clincs': 'Hospitals & Clinics',
+      'Hospitals & Clincs': 'Hospitals & Clinics',
+      'Bus stand': 'APSRTC Bus Stand',
+    } as Record<string, string>)[name] || name
+    return language === 'te' ? categoryTranslations[displayName] || displayName : displayName
+  }, businessName: (name: string, nameTe?: string) => language === 'te' && nameTe ? nameTe : name }), [language])
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>
 }
 

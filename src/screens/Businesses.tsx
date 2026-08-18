@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View, Image } from 'react-native'
-import { buildGoogleMapsDirectionsUrl } from '../services/api'
+import { buildGoogleMapsDirectionsUrl, fetchJson } from '../services/api'
 import BottomNav from './BottomNav'
 import MobileHeader from './MobileHeader'
 import { useLanguage } from '../context/LanguageContext'
@@ -15,8 +15,8 @@ import { colors } from '../ui/theme'
 import FocusTextInput from '../ui/FocusTextInput'
 
 const subcategoryIcons: Record<string, string> = {
-  Education: '🎓', 'Degree colleges': '🎓', 'Engineering colleges': '🎓', Intermediate: '🎓', 'Polytechnic colleges': '🎓', Schools: '🎓', Hospitals: '✚', 'Medical shops': '✦', Restaurants: '⌂', Lodges: '▣', 'Bus stand': '▤',
-  'Police station': '⌁', Temples: '◉', Banks: '🏦', 'Banks & ATMs': '🏧', 'Movie Theaters': '▶', 'Shopping clothes': '◈', 'Retail marts': '▦',
+  Education: '🎓', 'Education & Institutions': '🎓', 'Degree colleges': '🎓', 'Engineering colleges': '🎓', Intermediate: '🎓', 'Polytechnic colleges': '🎓', Schools: '🎓', Hospitals: '✚', 'Hospitals & Clinics': '🏥', 'Medical shops': '✦', 'Medical Shops': '💊', 'Diagnostic Lab Centers': '🧪', 'Radiology Scan Centers': '🩻', Restaurants: '🍽️', 'Restaurants & Hotels': '🍽️', Lodges: '▣', 'Bus stand': '▤',
+  'Police station': '⌁', 'Police Station': '🚔', '108 Emergency': '🚑', 'Fire Station': '🚒', Temples: '🛕', Banks: '🏦', 'Banks & ATMs': '🏧', 'Movie Theaters': '▶', 'Shopping clothes': '◈', 'Retail marts': '▦',
   'Beauty clinics': '✧', 'Real Estate': '🏘️', Agriculture: '🌾', 'Food & Meat Markets': '🥬', 'Rental Transport': '🚚',
   'Tourist Places': '🗺️', 'Rental Houses': '🏠', 'Construction Materials': '🧱', 'Government Offices': '🏛️', 'Buy & Sell': '🏷️',
   'Common Utilities': '🧰', 'ATM Centers': '🏧', 'Petrol Pumps': '⛽', 'Gas Centers': '🔥', 'EV Charging Stations': '🔌', 'Public Toilets': '🚻',
@@ -29,6 +29,15 @@ const subcategoryIcons: Record<string, string> = {
   'Tiles Work': '◼️', 'False Ceiling': '🏠', 'Bore Points': '💧', 'Bike Show Rooms': '🏍️', 'Car Show Rooms': '🚘', 'Vehicle Wash': '🚿',
   'Computer Training': '💻', 'Spoken English': '🗣️', 'Driving Schools': '🚗', 'Skill Development': '🧰',
   'Training Institutions': '🎓', 'RealEstate': '▣', 'Agricultural info': '🌾', 'School': '🎓', 'College': '🎓',
+  'Book Stores': '📚', 'Photo Studios': '📷', 'Courier Services': '📦', 'Kids Toys & Cycles': '🚲',
+  'Vehicle Battery Shops': '🔋', 'Key & Lock Repair': '🔑', 'Painting & Hardware': '🎨', 'Dry Fruit Stores': '🥭',
+  'Mobile & Accessories': '📱', 'Fireworks & Crackers': '✨', 'Iron & Grill Suppliers': '⚒️', 'Clothing & Tailors': '👕',
+  'Carpentry Services': '🪚', 'AC Services': '❄️', 'Washing Machine Repair': '🧺', 'Event Caterers': '🍽️',
+  'WiFi & Internet Services': '📡', 'Tractor Mechanics': '🔧', 'MeeSeva Centers': '🏢', 'Aadhaar Centers': '🆔',
+  'Sachivalayams': '🏛️', 'Court & Legal Services': '⚖️', 'Electricity & Water Offices': '⚡', 'Sports Coaching': '⚽',
+  'Tuition Centers': '📖', 'Dance Academies': '💃', 'APSRTC Bus Stand': '🚌', 'Private Travels': '🚐',
+  'Railway Station': '🚂', 'Priests & Poojaris': '🙏', 'Swimming Pools': '🏊', 'Other Services': '⚙️',
+  'Ramayapatnam Beach': '🏖️', 'Pakala Lake': '🌊', 'Etha Mokkala': '⛰️', 'Chirala Beach': '🏖️', 'Insurance Offices': '📋',
 }
 
 const directPostingCategoryNames = new Set(['Real Estate', 'Rental Transport', 'Construction Materials', 'Buy & Sell'])
@@ -59,6 +68,7 @@ export default function Businesses({ navigation, route }: any) {
   const [sortMode, setSortMode] = useState<'nearest' | 'rating' | 'newest'>('newest')
   const [minRating, setMinRating] = useState(0)
   const [distanceFilter, setDistanceFilter] = useState(20)
+  const [busRouteCount, setBusRouteCount] = useState<number | null>(null)
   const categoryId = route.params?.categoryId || null
   const category = categories.find(item => item.id === categoryId)
   const parentCategory = categories.find(item => item.id === category?.parentId)
@@ -93,6 +103,18 @@ export default function Businesses({ navigation, route }: any) {
   React.useEffect(() => { if (ready) ensureAddresses(selectedBusinesses.map((business) => ({ id: business.id, address: business.address, latitude: business.latitude, longitude: business.longitude }))) }, [selectedBusinesses.length, categoryId, ready])
 
   const childCategories = categories.filter(item => item.parentId === categoryId)
+  React.useEffect(() => {
+    if (category?.name !== 'Travel & Transport') {
+      setBusRouteCount(null)
+      return
+    }
+    let active = true
+    fetchJson<{ data: unknown[] }>('/api/bus-routes')
+      .then((response) => { if (active) setBusRouteCount(response.data.length) })
+      .catch(() => { if (active) setBusRouteCount(null) })
+    return () => { active = false }
+  }, [category?.name])
+
   if (childCategories.length > 0) {
     return (
       <View style={styles.container}>
@@ -113,10 +135,12 @@ export default function Businesses({ navigation, route }: any) {
             <Pressable
               key={item.id}
               style={styles.listRow}
-              onPress={() => navigation.push('Businesses', { categoryId: item.id })}
+              onPress={() => item.name === 'APSRTC Bus Stand'
+                ? navigation.navigate('BusTimetable')
+                : navigation.push('Businesses', { categoryId: item.id })}
             >
               <View style={styles.subcategoryIcon}><Text style={styles.subcategoryIconText}>{getSubcategoryIcon(item.name)}</Text></View>
-              <View style={styles.subcategoryCopy}><Text style={styles.listRowText}>{categoryLabel(item.name)}</Text><Text style={styles.subcategoryCount}>{childCount} {t('Listings', 'లిస్టింగ్‌లు')}</Text></View>
+              <View style={styles.subcategoryCopy}><Text style={styles.listRowText}>{categoryLabel(item.name)}</Text><Text style={styles.subcategoryCount}>{item.name === 'APSRTC Bus Stand' && busRouteCount !== null ? busRouteCount : childCount} {t('Listings', 'లిస్టింగ్‌లు')}</Text></View>
               <Text style={styles.listArrow}>›</Text>
             </Pressable>
             )

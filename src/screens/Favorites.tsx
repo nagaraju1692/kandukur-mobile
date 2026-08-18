@@ -9,8 +9,8 @@ import { useDirectory } from '../context/DirectoryContext'
 import { colors } from '../ui/theme'
 
 const favoriteIcons: Record<string, string> = {
-  Education: '🎓', Hospitals: '✚', 'Medical shops': '✦', Restaurants: '⌂',
-  Lodges: '▣', 'Bus stand': '▤', 'Police station': '⌁', Temples: '◉',
+  Education: '🎓', 'Education & Institutions': '🎓', Hospitals: '✚', 'Hospitals & Clinics': '🏥', 'Medical shops': '✦', 'Medical Shops': '💊', 'Diagnostic Lab Centers': '🧪', 'Radiology Scan Centers': '🩻', Restaurants: '🍽️', 'Restaurants & Hotels': '🍽️',
+  Lodges: '▣', 'Bus stand': '▤', 'Police station': '⌁', 'Police Station': '🚔', '108 Emergency': '🚑', 'Fire Station': '🚒', Emergency: '🚨', Temples: '🛕',
   Banks: '₹', 'Movie Theaters': '▶', 'Shopping clothes': '◈', 'Retail marts': '▦',
   'Beauty clinics': '✧', 'Real Estate': '🏘️', Agriculture: '🌾',
   'Food & Meat Markets': '🥬', 'Rental Transport': '🚚', 'Tourist Places': '🗺️',

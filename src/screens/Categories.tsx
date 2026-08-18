@@ -12,13 +12,18 @@ import { colors } from '../ui/theme'
 // Map old category names to new subcategory names for backward compatibility
 const categoryNameMappings: Record<string, string[]> = {
   'Finance & Utilities': ['Banks'],
+  Health: ['Hospitals', 'Hospitals & Clinics', 'Medical shops', 'Medical Shops', 'Diagnostic Labs', 'Diagnostic Lab Centers', 'Diagnosis Labs', 'Radiology Scans', 'Radiology Scan Centers', 'Scan Centers'],
+  Emergency: ['Police station', 'Police Station', '108', '108 Emergency', 'Fire station', 'Fire Station'],
+  'Police Station': ['Police station', 'Police Station'],
+  '108 Emergency': ['108', '108 Emergency', '108 Ambulance'],
+  'Fire Station': ['Fire station', 'Fire Station'],
 }
 
 const icons: Record<string, string> = {
-  Education: '🎓', 'Hospitals & Clinics': '✚', 'Medical shops': '✦', Restaurants: '⌂',
-  Lodges: '▣', 'Bus stand': '🚌', 'Police station': '🚔', Temples: '🛕',
-  'Movie Theaters': '▶', 'Shopping clothes': '◈', 'Retail marts': '🛒',
-  'Beauty clinics': '✧', 'RealEstate': '▣', 'Agricultural info': '🌾',
+  Education: '🎓', 'Education & Institutions': '🎓', 'Medical shops': '💊', Restaurants: '🍽️', 'Restaurants & Hotels': '🍽️',
+  Lodges: '🏨', 'Bus stand': '🚌', 'Police station': '🚔', 'Police Station': '🚔', '108 Emergency': '🚑', 'Fire Station': '🚒', Emergency: '🚨', Health: '🏥', 'Hospitals & Clinics': '🏥', 'Medical Shops': '💊', 'Diagnostic Lab Centers': '🧪', 'Radiology Scan Centers': '🩻', Temples: '🛕',
+  'Movie Theaters': '🎬', 'Shopping clothes': '🛍️', 'Retail marts': '🛒',
+  'Beauty clinics': '💆', 'RealEstate': '🏠', 'Agricultural info': '🌾',
   'Real Estate': '🏘️', Agriculture: '🌾', 'Food & Meat Markets': '🥬', 'Rental Transport': '🚚',
   'Tourist Places': '🗺️', 'Rental Houses': '🏠', 'Construction Materials': '🧱', 'Government Offices': '🏛️',
   'Buy & Sell': '🏷️', 'Cars for Sale': '🚗', 'Bikes for Sale': '🏍️', 'Tractors for Sale': '🚜', 'Other Items for Sale': '🏷️',
@@ -32,54 +37,68 @@ const icons: Record<string, string> = {
   'Training Institutions': '🎓', 'Computer Training': '💻', 'Spoken English': '🗣️', 'Driving Schools': '🚗', 'Skill Development': '🧰',
   Plumber: '🔧', Electricians: '⚡', 'Tiles Work': '◼️', 'False Ceiling': '🏠', 'Bore Points': '💧', 'Bike Show Rooms': '🏍️',
   'Car Show Rooms': '🚘', 'Vehicle Wash': '🚿',
-  // New parent categories
   'Shops & Local Businesses': '🏪',
   'Home & Technical Services': '🛠️',
   'Government & Public Services': '🏛️',
-  'Education & Training': '🎓',
+  'Education & Training': '🎓', 'Education & Sports Training Centers': '🎓',
   'Travel & Transport': '🚍',
   'Religious & Miscellaneous': '🧘',
   'Tourism & Attractions': '🌍',
   'Finance & Utilities': '🏦',
-  // New child categories - Shops & Local Businesses
-  'Book Stores': '�', 'Photo Studios': '📷', 'Courier Services': '📦', 'Kids Toys & Cycles': '🚲',
-  'Vehicle Battery Shops': '🔋', 'Key & Lock Repair': '🔑', 'Painting & Hardware': '🎨', 'Dry Fruit Stores': '🥕',
-  'Mobile & Accessories': '📱', 'Fireworks & Crackers': '✨', 'Iron & Grill Suppliers': '⚒️', 'Clothing & Tailors': '✂️',
-  // Home & Technical Services
-  'Carpentry Services': '🪚', 'AC Services': '❄️', 'Washing Machine Repair': '🔧', 'Event Caterers': '🍽️',
+  'Book Stores': '📚', 'Photo Studios': '📷', 'Courier Services': '📦', 'Kids Toys & Cycles': '🚲',
+  'Vehicle Battery Shops': '🔋', 'Key & Lock Repair': '🔑', 'Painting & Hardware': '🎨', 'Dry Fruit Stores': '🥭',
+  'Mobile & Accessories': '📱', 'Fireworks & Crackers': '✨', 'Iron & Grill Suppliers': '⚒️', 'Clothing & Tailors': '👕',
+  'Carpentry Services': '🪚', 'AC Services': '❄️', 'Washing Machine Repair': '🧺', 'Event Caterers': '🍽️',
   'WiFi & Internet Services': '📡', 'Tractor Mechanics': '🔧',
-  // Government & Public Services
   'MeeSeva Centers': '🏢', 'Aadhaar Centers': '🆔', 'Sachivalayams': '🏛️', 'Court & Legal Services': '⚖️', 'Electricity & Water Offices': '⚡',
-  // Education & Training
   'Sports Coaching': '⚽', 'Tuition Centers': '📖', 'Dance Academies': '💃',
-  // Travel & Transport
   'APSRTC Bus Stand': '🚌', 'Private Travels': '🚐', 'Railway Station': '🚂',
-  // Religious & Miscellaneous
   'Priests & Poojaris': '🙏', 'Swimming Pools': '🏊', 'Other Services': '⚙️',
-  // Tourism & Attractions
   'Ramayapatnam Beach': '🏖️', 'Pakala Lake': '🌊', 'Etha Mokkala': '⛰️', 'Chirala Beach': '🏖️',
-  // Finance & Utilities
   'Banks & ATMs': '🏧', 'Insurance Offices': '📋',
 }
 
+function getCategoryFallbackIcon(name: string) {
+  const normalized = name.toLowerCase()
+  if (normalized.includes('book')) return '📚'
+  if (normalized.includes('cloth')) return '👕'
+  if (normalized.includes('courier') || normalized.includes('delivery')) return '📦'
+  if (normalized.includes('dry')) return '🥭'
+  if (normalized.includes('fire')) return '✨'
+  if (normalized.includes('iron') || normalized.includes('grill')) return '⚒️'
+  if (normalized.includes('medical') || normalized.includes('clinic')) return '💊'
+  if (normalized.includes('bus') || normalized.includes('travel')) return '🚌'
+  if (normalized.includes('hotel') || normalized.includes('restaurant')) return '🍽️'
+  if (normalized.includes('school') || normalized.includes('education') || normalized.includes('institution')) return '🎓'
+  if (normalized.includes('bank') || normalized.includes('atm')) return '🏧'
+  if (normalized.includes('real') || normalized.includes('house') || normalized.includes('estate')) return '🏠'
+  if (normalized.includes('shop') || normalized.includes('store')) return '🏪'
+  return '📍'
+}
+
+
 const categoryPriority = [
-  'Education', 'Hospitals & Clinics', 'Medical shops', 'Restaurants', 'Real Estate', 'Agriculture',
+  'Education', 'Education & Institutions', 'Health', 'Restaurants', 'Restaurants & Hotels', 'Real Estate', 'Agriculture',
   'Food & Meat Markets', 'Rental Transport', 'Rental Houses', 'Construction Materials',
   'Buy & Sell',
   'Common Utilities',
   'Training Institutions', 'Government Offices', 'Manpower Services', 'Show Rooms',
-  'Bike & Car Mechanics', 'Tourist Places', 'Cold Storages', 'Lodges', 'Bus stand',
+  'Bike & Car Mechanics', 'Tourist Places', 'Cold Storages', 'Lodges',
   'Police station', 'Temples', 'Beauty clinics', 'Movie Theaters', 'Shopping clothes',
   'Retail marts', 'Wine shops', 'Jewellery shops',
   // Main parent categories
   'Shops & Local Businesses',
   'Home & Technical Services',
   'Government & Public Services',
-  'Education & Training',
+  'Emergency',
+  'Health',
+  'Education & Sports Training Centers',
   'Travel & Transport',
   'Religious & Miscellaneous',
   'Tourism & Attractions',
   'Finance & Utilities',
+  // Health subcategories
+  'Hospitals & Clinics', 'Medical Shops', 'Diagnostic Lab Centers', 'Radiology Scan Centers',
   // Shops & Local Businesses subcategories
   'Book Stores', 'Photo Studios', 'Courier Services', 'Kids Toys & Cycles',
   'Vehicle Battery Shops', 'Key & Lock Repair', 'Painting & Hardware', 'Dry Fruit Stores',
@@ -89,7 +108,9 @@ const categoryPriority = [
   'WiFi & Internet Services', 'Tractor Mechanics',
   // Government & Public Services subcategories
   'MeeSeva Centers', 'Aadhaar Centers', 'Sachivalayams', 'Court & Legal Services', 'Electricity & Water Offices',
-  // Education & Training subcategories
+  // Emergency subcategories
+  'Police Station', '108 Emergency', 'Fire Station',
+  // Education & Sports Training Centers subcategories
   'Sports Coaching', 'Tuition Centers', 'Dance Academies',
   // Travel & Transport subcategories
   'APSRTC Bus Stand', 'Private Travels', 'Railway Station',
@@ -104,7 +125,7 @@ const categoryPriority = [
 function CategoryThumbnail({ name }: { name: string }) {
   const [imageFailed, setImageFailed] = useState(false)
   if (imageFailed) {
-    return <View style={styles.categoryIconFallback}><Text style={styles.categoryIconText}>{icons[name] || '📌'}</Text></View>
+    return <View style={styles.categoryIconFallback}><Text style={styles.categoryIconText}>{icons[name] || getCategoryFallbackIcon(name)}</Text></View>
   }
   return <Image source={{ uri: getCategoryImage(name) }} style={styles.image} resizeMode="cover" onError={() => setImageFailed(true)} />
 }
@@ -118,7 +139,7 @@ export default function Categories({ navigation }: any) {
   const rootCategories = categories
     .filter(category => {
       if (category.parentId) return false
-      if (category.name === 'Banks') return false
+      if (category.name === 'Banks' || category.name === 'Bus stand' || category.name === 'Police station' || category.name === 'Police Station' || category.name === 'Tourist Places' || category.name === 'Hospitals' || category.name === 'Hospitals & Clinics' || category.name === 'Medical shops' || category.name === 'Medical Shops') return false
       const childIds = categories.filter((child) => child.parentId === category.id).map((child) => child.id)
       const mappedCategoryNames = categoryNameMappings[category.name] || []
       const categoryBusinesses = businesses.filter((business) => 
@@ -126,6 +147,14 @@ export default function Categories({ navigation }: any) {
         childIds.includes(business.categoryId) ||
         mappedCategoryNames.includes(business.categoryName)
       )
+      const duplicateHasMoreListings = categories.some((candidate) => {
+        if (candidate.id === category.id || candidate.name !== category.name || candidate.parentId !== category.parentId) return false
+        const candidateChildIds = categories.filter((child) => child.parentId === candidate.id).map((child) => child.id)
+        const candidateMappedNames = categoryNameMappings[candidate.name] || []
+        const candidateCount = businesses.filter((business) => candidate.id === business.categoryId || candidateChildIds.includes(business.categoryId) || candidateMappedNames.includes(business.categoryName)).length
+        return candidateCount > categoryBusinesses.length
+      })
+      if (duplicateHasMoreListings) return false
       if (listingFilter === 'favorites') return categoryBusinesses.some((business) => favorites.includes(business.id))
       return listingFilter === 'all' || (listingFilter === 'withListings' ? categoryBusinesses.length > 0 : categoryBusinesses.length === 0)
     })
@@ -176,7 +205,7 @@ export default function Categories({ navigation }: any) {
               <Pressable
                 key={category.id}
                 style={styles.card}
-                onPress={() => navigation.navigate(category.name === 'Bus stand' ? 'BusTimetable' : 'Businesses', category.name === 'Bus stand' ? undefined : { categoryId: category.id })}
+                onPress={() => navigation.navigate(category.name === 'APSRTC Bus Stand' ? 'BusTimetable' : 'Businesses', category.name === 'APSRTC Bus Stand' ? undefined : { categoryId: category.id })}
               >
                 <View style={styles.categoryImageWrap}>
                   <CategoryThumbnail name={category.name} />
