@@ -50,7 +50,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       Restaurants: 'Restaurants & Hotels',
       'Restarent & Hotals': 'Restaurants & Hotels',
       'Restaurants & Hotals': 'Restaurants & Hotels',
-      Hospitals: 'Hospitals & Clinics',
       'Hospitals & clincs': 'Hospitals & Clinics',
       'Hospitals & Clincs': 'Hospitals & Clinics',
       'Bus stand': 'APSRTC Bus Stand',

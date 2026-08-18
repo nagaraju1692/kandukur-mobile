@@ -2,9 +2,9 @@
   "expo": {
     "name": "ManaKandukur Mobile",
     "slug": "nagaraju",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/ManaKandukur.png",
     "splash": {
-      "image": "./assets/icon.png",
+      "image": "./assets/ManaKandukur.png",
       "resizeMode": "contain",
       "backgroundColor": "#B088C8"
     },
@@ -14,10 +14,10 @@
       "web"
     ],
     "sdkVersion": "54.0.0",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "android": {
       "package": "com.manakandukur.directory",
-      "versionCode": 5
+      "versionCode": 6
     },
     "extra": {
       "eas": {
@@ -42,7 +42,8 @@
           "isAndroidBackgroundLocationEnabled": false,
           "isIosBackgroundLocationEnabled": false
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }

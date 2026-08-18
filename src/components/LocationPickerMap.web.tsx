@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native'
 
 export interface LocationPickerMapProps {
   selectedLocation: { latitude: number; longitude: number } | null
@@ -18,7 +18,7 @@ export default function LocationPickerMap({
 }: LocationPickerMapProps) {
   const baseLatitude = selectedLocation?.latitude ?? initialLatitude ?? 15.2154
   const baseLongitude = selectedLocation?.longitude ?? initialLongitude ?? 79.9072
-  const [markerPosition, setMarkerPosition] = useState({ left: '50%', top: '50%' })
+  const [markerPosition, setMarkerPosition] = useState<ViewStyle>({ left: '50%', top: '50%' })
 
   const mapUri = useMemo(() => {
     const svg = `

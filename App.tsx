@@ -31,7 +31,7 @@ import Feedback from './src/screens/Feedback';
 import BusTimetable from './src/screens/BusTimetable';
 import { DirectoryProvider } from './src/context/DirectoryContext';
 import { recordAppUsage } from './src/services/api';
-import { DISMISSED_VERSION_KEY, fetchLatestUpdate } from './src/services/updateCheck';
+import { fetchLatestUpdate } from './src/services/updateCheck';
 
 enableScreens();
 
@@ -80,14 +80,11 @@ function AppRoot() {
         const update = await fetchLatestUpdate()
         if (!update || cancelled) return
 
-        const dismissedVersion = await AsyncStorage.getItem(DISMISSED_VERSION_KEY)
-        if (dismissedVersion === update.version) return
-
         Alert.alert(
           'Update available',
           `A new version (${update.version}) of ManaKandukur is ready to install.`,
           [
-            { text: 'Later', style: 'cancel', onPress: () => AsyncStorage.setItem(DISMISSED_VERSION_KEY, update.version) },
+            { text: 'Later', style: 'cancel' },
             { text: 'Update now', onPress: () => Linking.openURL(update.downloadUrl) },
           ],
         )
