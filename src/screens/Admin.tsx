@@ -44,6 +44,8 @@ type AdminFeedback = {
   subject: string
   contact?: string | null
   message: string
+  adminReply?: string | null
+  repliedAt?: string | null
   createdAt: string
 }
 
@@ -88,6 +90,7 @@ export default function Admin({ navigation }: any) {
 
   const [busyBusinessId, setBusyBusinessId] = useState<string | null>(null)
   const [busyFeedbackId, setBusyFeedbackId] = useState<string | null>(null)
+  const [feedbackReplies, setFeedbackReplies] = useState<Record<string, string>>({})
   const [datePickerField, setDatePickerField] = useState<'startDate' | 'endDate' | null>(null)
   const [datePickerValue, setDatePickerValue] = useState(new Date())
   const [webDateInput, setWebDateInput] = useState<{ field: 'startDate' | 'endDate'; value: string } | null>(null)
@@ -464,6 +467,21 @@ export default function Admin({ navigation }: any) {
     )
   }
 
+  const replyToFeedback = async (item: AdminFeedback) => {
+    const reply = (feedbackReplies[item.id] || '').trim()
+    if (!reply || !user?.phone) return
+    setBusyFeedbackId(item.id)
+    try {
+      const response = await fetchJson<{ data: AdminFeedback }>(`/api/admin/feedback/${encodeURIComponent(item.id)}/reply`, { method: 'PATCH', body: JSON.stringify({ reply }) }, user.phone)
+      setFeedbackItems((current) => current.map((currentItem) => currentItem.id === item.id ? response.data : currentItem))
+      setFeedbackReplies((current) => ({ ...current, [item.id]: '' }))
+    } catch {
+      showAlert(t('Reply failed', 'Reply failed'), t('Unable to save the reply.', 'Unable to save the reply.'))
+    } finally {
+      setBusyFeedbackId(null)
+    }
+  }
+
   if (!isSuperAdmin) {
     return (
       <View style={styles.screen}>
@@ -683,8 +701,17 @@ export default function Admin({ navigation }: any) {
                   <Text style={styles.rowTitle}>{item.subject}</Text>
                   <Text style={styles.rowDetail}>{item.type} � {item.userPhone}</Text>
                   <Text style={styles.rowDetail}>{item.message}</Text>
+                  {item.adminReply ? <Text style={styles.replyText}>{t('Admin reply:', 'Admin reply:')} {item.adminReply}</Text> : null}
                 </View>
                 <View style={styles.rowActions}>
+                  <FocusTextInput
+                    style={styles.replyInput}
+                    placeholder={t('Write a reply', 'Write a reply')}
+                    value={feedbackReplies[item.id] || ''}
+                    onChangeText={(value) => setFeedbackReplies((current) => ({ ...current, [item.id]: value }))}
+                    multiline
+                  />
+                  <Pressable style={[styles.replyButton, busyFeedbackId === item.id && styles.disabled]} disabled={busyFeedbackId === item.id} onPress={() => replyToFeedback(item)}><Text style={styles.replyButtonText}>{busyFeedbackId === item.id ? t('Sending...', 'Sending...') : t('Reply', 'Reply')}</Text></Pressable>
                   <Pressable style={[styles.deleteBtn, busyFeedbackId === item.id && styles.disabled]} disabled={busyFeedbackId === item.id} onPress={() => deleteFeedback(item)}><Text style={styles.deleteText}>{t('Delete', '??????????')}</Text></Pressable>
                 </View>
               </View>
@@ -889,6 +916,10 @@ const styles = StyleSheet.create({
   rowCopy: { flex: 1 },
   rowTitle: { color: '#2D2F3D', fontSize: 13, fontWeight: '800' },
   rowDetail: { marginTop: 2, color: '#666C7D', fontSize: 11, lineHeight: 16 },
+  replyText: { marginTop: 8, color: '#3F4FA3', fontSize: 11, lineHeight: 16, fontWeight: '700' },
+  replyInput: { minHeight: 48, marginTop: 4, borderWidth: 1, borderColor: '#D7DBED', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, color: '#1F2235', backgroundColor: '#F8F9FF', fontSize: 12 },
+  replyButton: { alignSelf: 'flex-start', borderWidth: 1, borderColor: '#C9C6F3', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#F0EEFF' },
+  replyButtonText: { color: '#4F47B8', fontSize: 11, fontWeight: '800' },
   rowActions: { flexDirection: 'row', gap: 6 },
   statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   statusBtn: { borderWidth: 1, borderColor: '#D7DBED', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 6, backgroundColor: '#FFF' },
