@@ -25,6 +25,13 @@ const weatherModeImages = {
   afternoon: 'https://images.unsplash.com/photo-1499346030926-9a72daac6c63?auto=format&fit=crop&w=700&q=85',
   evening: 'https://images.unsplash.com/photo-1472120435266-53107fd0c44a?auto=format&fit=crop&w=700&q=85',
 }
+
+
+
+
+
+
+
 const goldImageUrl = 'https://images.unsplash.com/photo-1610375461246-83df859d849d?auto=format&fit=crop&w=700&q=85'
 const announcementCardGap = 12
 const popularGroups = [
@@ -32,6 +39,61 @@ const popularGroups = [
   ['medical-shops', 'Medical shops', 'Medical Shops'],
   ['restaurants-hotels', 'Restaurants', 'Restaurants & Hotels'],
 ]
+const rainCodes = new Set([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99])
+const kandukurOffsetMs = (5 * 60 + 30) * 60 * 1000
+
+function getKandukurTimeMs(time: string | Date) {
+  if (time instanceof Date) return time.getTime()
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(time)
+  if (!match) return new Date(time).getTime()
+  const [, year, month, day, hour, minute] = match
+  return Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)) - kandukurOffsetMs
+}
+
+function formatRainHour(time: string | Date) {
+  return new Date(getKandukurTimeMs(time)).toLocaleTimeString('en-IN', {
+    hour: 'numeric',
+    timeZone: 'Asia/Kolkata',
+  })
+}
+
+function getRainWindow(weather: WeatherReport | null, t: (en: string, te: string) => string) {
+  if (!weather?.hourly || weather.hourly.length === 0) return null
+  const now = Date.now()
+  const upcomingHours = weather.hourly
+    .map((hour, index) => ({ hour, index }))
+    .filter(({ hour }) => getKandukurTimeMs(hour.time) + 60 * 60 * 1000 >= now)
+
+  const rainStartPos = upcomingHours.findIndex(({ hour }) => rainCodes.has(hour.code))
+  if (rainStartPos < 0) return null
+
+  const rainStartIndex = upcomingHours[rainStartPos].index
+  let rainEndIndex = rainStartIndex
+  while (
+    rainEndIndex + 1 < weather.hourly.length &&
+    rainCodes.has(weather.hourly[rainEndIndex + 1].code)
+  ) {
+    rainEndIndex += 1
+  }
+
+  const startHour = weather.hourly[rainStartIndex]
+  const endHour = weather.hourly[rainEndIndex]
+  const startTimeStr = formatRainHour(startHour.time)
+  const endTimeDate = new Date(getKandukurTimeMs(endHour.time) + 60 * 60 * 1000)
+  const endTimeStr = formatRainHour(endTimeDate)
+
+  const startMs = getKandukurTimeMs(startHour.time)
+  const endMs = getKandukurTimeMs(endHour.time) + 60 * 60 * 1000
+  const timeRange = `${startTimeStr} – ${endTimeStr}`
+
+  return {
+    timeRange,
+    startMs,
+    endMs,
+    badgeText: t(`Rain: ${timeRange}`, `వర్షం: ${startTimeStr} – ${endTimeStr}`),
+    modalText: t(`Rain expected between ${startTimeStr} to ${endTimeStr}`, `${startTimeStr} నుండి ${endTimeStr} మధ్య వర్షం పడే అవకాశం ఉంది`),
+  }
+}
 
 function localPopularBusinesses(businesses: any[]) {
   return popularGroups.flatMap((group) => businesses.filter((business) => group.includes(business.categoryId) || group.includes(business.categoryName)))
@@ -42,6 +104,12 @@ function weatherIcon(code: number) {
   if (code >= 61 || (code >= 51 && code <= 57) || (code >= 80 && code <= 82)) return '🌧'
   if (code >= 2) return '☁'
   return '☀'
+}
+
+function isHourInRainWindow(time: string | Date, rainWindow: ReturnType<typeof getRainWindow>) {
+  if (!rainWindow) return false
+  const hourMs = getKandukurTimeMs(time)
+  return hourMs >= rainWindow.startMs && hourMs < rainWindow.endMs
 }
 
 function getWeatherMode(weather: WeatherReport | null, time: Date) {
@@ -101,6 +169,7 @@ export default function Home({ navigation }: any) {
   const categoryCardWidth = (width - horizontalPadding * 2 - 12) / 2
   const announcementCardWidth = isPhone ? (width - horizontalPadding * 2 - announcementCardGap) / 2 : 252
   const weatherMode = getWeatherMode(weather, currentTime)
+  const rainWindow = getRainWindow(weather, t)
   const popularNearYou = popularGroups.flatMap((group) => sortNearest(
     popularBusinesses.filter((business) => group.includes(business.categoryId) || group.includes(business.categoryName)),
   ).slice(0, 2))
@@ -190,15 +259,15 @@ export default function Home({ navigation }: any) {
 
         <View style={styles.locationRow}><Text style={styles.locationPin}>📍</Text><Text style={styles.locationText}>{t('Kandukur, Andhra Pradesh', 'కందుకూరు, ఆంధ్రప్రదేశ్')}</Text></View>
 
-        <View style={styles.utilityRow}>
+                <View style={styles.utilityRow}>
           <Pressable style={styles.utilityCard} onPress={() => setSelectedUtility('weather')}>
             <Image source={{ uri: weatherModeImages[weatherMode] || weatherImageUrl }} style={styles.utilityImage} resizeMode="cover" />
             <View style={styles.utilityCopy}>
               <Text style={[styles.utilityLabel, styles.weatherLabel]}>{t('TODAY’S WEATHER', 'ఈరోజు వాతావరణం')}</Text>
               <Text style={styles.weatherTime}>{currentTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</Text>
               <Text style={[styles.utilityValue, styles.weatherValue]}>{weather?.temp || (utilityLoading ? t('Loading…', 'లోడ్ అవుతోంది…') : t('Unavailable', 'అందుబాటులో లేదు'))}</Text>
-              <Text style={styles.weatherStatus}>{weather ? `${weatherIcon(weather.daily[0]?.code ?? 0)} ${weather.condition}` : t('Weather status unavailable', 'వాతావరణ సమాచారం అందుబాటులో లేదు')}</Text>
-              <Text style={styles.utilityText}>{weather ? weather.humidity : t('Kandukur area', 'కందుకూరు ప్రాంతం')}</Text>
+              <Text style={styles.weatherStatus} numberOfLines={1}>{weather ? `${weatherIcon(weather.daily[0]?.code ?? 0)} ${weather.condition}` : t('Weather status unavailable', 'వాతావరణ సమాచారం అందుబాటులో లేదు')}</Text>
+              <Text style={[styles.utilityText, rainWindow && styles.rainSummaryText]} numberOfLines={1}>{rainWindow ? `🌧 ${rainWindow.badgeText}` : (weather ? weather.humidity : t('Kandukur area', 'కందుకూరు ప్రాంతం'))}</Text>
             </View>
           </Pressable>
           <Pressable style={styles.utilityCard} onPress={() => setSelectedUtility('gold')}>
@@ -288,21 +357,39 @@ export default function Home({ navigation }: any) {
       <Modal visible={selectedUtility !== null} transparent animationType="fade" onRequestClose={() => setSelectedUtility(null)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.utilityModal}>
-            <View style={styles.utilityModalHero}>
+                        <View style={styles.utilityModalHero}>
               <Image source={{ uri: selectedUtility === 'weather' ? (weatherModeImages[weatherMode] || weatherImageUrl) : goldImageUrl }} style={styles.utilityModalHeroImage} resizeMode="cover" />
               <View style={styles.utilityModalHeroShade} />
               <Pressable style={styles.utilityModalClose} onPress={() => setSelectedUtility(null)}><Text style={styles.utilityModalCloseText}>×</Text></Pressable>
               <View style={styles.utilityModalHeroCopy}>
                 <Text style={styles.utilityModalKicker}>{selectedUtility === 'weather' ? t('Today’s weather', 'ఈరోజు వాతావరణం') : t('Gold rate today', 'ఈరోజు బంగారం ధర')}</Text>
                 <Text style={styles.utilityModalHeroValue}>{selectedUtility === 'weather' ? (weather?.temp || t('Unavailable', 'అందుబాటులో లేదు')) : (gold ? `₹${gold.pricePerSavaram22K.toLocaleString('en-IN')}` : t('Unavailable', 'అందుబాటులో లేదు'))}</Text>
-                <Text style={styles.utilityModalHeroDetail}>{selectedUtility === 'weather' ? (weather ? `${weather.condition} · ${weather.humidity}` : t('Kandukur area', 'కందుకూరు ప్రాంతం')) : t('22K · 8g savaram', '22K · 8 గ్రాములు')}</Text>
+                <Text style={styles.utilityModalHeroDetail}>{selectedUtility === 'weather' ? (weather ? `${weather.condition}${rainWindow ? ` · 🌧 ${rainWindow.timeRange}` : ` · ${weather.humidity}`}` : t('Kandukur area', 'కందుకూరు ప్రాంతం')) : t('22K · 8g savaram', '22K · 8 గ్రాములు')}</Text>
               </View>
             </View>
             {selectedUtility === 'weather' ? (
               weather ? <ScrollView style={styles.weatherDetails} showsVerticalScrollIndicator={false}>
+                {rainWindow && (
+                  <View style={styles.rainAlertCard}>
+                    <Text style={styles.rainAlertIcon}>🌧</Text>
+                    <View style={styles.rainAlertContent}>
+                      <Text style={styles.rainAlertTitle}>{t('Rain Advisory', 'వర్షం సూచన')}</Text>
+                      <Text style={styles.rainAlertMessage}>{rainWindow.modalText}</Text>
+                    </View>
+                  </View>
+                )}
                 <View style={styles.weatherSummary}><Text style={styles.weatherSummaryIcon}>{weatherIcon(weather.daily[0]?.code ?? 0)}</Text><Text style={styles.weatherSummaryText}>{weather.wind}</Text><Text style={styles.weatherSummaryText}>{weather.humidity}</Text></View>
                 <Text style={styles.forecastHeading}>{t('Hourly forecast', 'గంటల వారీ అంచనా')}</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hourlyRail}>{weather.hourly.map((hour) => <View key={hour.time} style={styles.hourlyItem}><Text style={styles.forecastTime}>{new Date(hour.time).toLocaleTimeString([], { hour: 'numeric' })}</Text><Text style={styles.forecastIcon}>{weatherIcon(hour.code)}</Text><Text style={styles.forecastTemp}>{hour.temp}°</Text></View>)}</ScrollView>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hourlyRail}>{weather.hourly.map((hour) => {
+                  const rainForHour = rainCodes.has(hour.code) || isHourInRainWindow(hour.time, rainWindow)
+                  return (
+                    <View key={hour.time} style={[styles.hourlyItem, rainForHour && styles.hourlyItemRain]}>
+                      <Text style={styles.forecastTime}>{formatRainHour(hour.time)}</Text>
+                      <Text style={styles.forecastIcon}>{rainForHour ? '🌧' : weatherIcon(hour.code)}</Text>
+                      <Text style={styles.forecastTemp}>{hour.temp}°</Text>
+                    </View>
+                  )
+                })}</ScrollView>
                 <Text style={styles.forecastHeading}>{t('7-day forecast', '7 రోజుల అంచనా')}</Text>
                 <View style={styles.dailyList}>{weather.daily.map((day) => <View key={day.date} style={styles.dailyItem}><Text style={styles.dailyDay}>{new Date(day.date).toLocaleDateString([], { weekday: 'short' })}</Text><Text style={styles.forecastIcon}>{weatherIcon(day.code)}</Text><Text style={styles.dailyTemp}>{day.max}° <Text style={styles.dailyMin}>{day.min}°</Text></Text></View>)}</View>
                 <Text style={styles.utilityModalFoot}>{t('Kandukur area · Updated', 'కందుకూరు ప్రాంతం · నవీకరించబడింది')} {new Date(weather.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
@@ -431,9 +518,10 @@ const styles = StyleSheet.create({
   goldLabel: { color: '#9A6500' },
   utilityValue: { marginTop: 2, fontSize: 19, fontWeight: '900' },
   weatherValue: { color: '#164F58' },
-  weatherTime: { color: '#4A5660', fontSize: 11, fontWeight: '800', marginBottom: 2 },
+    weatherTime: { color: '#4A5660', fontSize: 11, fontWeight: '800', marginBottom: 2 },
   weatherStatus: { color: '#45616A', fontSize: 10, fontWeight: '700', marginBottom: 2 },
   utilityText: { marginTop: 1, color: '#5D5860', fontSize: 9, lineHeight: 11, fontWeight: '700' },
+  rainSummaryText: { color: '#0284C7', fontWeight: '800' },
   goldRateValue: { marginTop: 2, color: '#805100', fontSize: 18, fontWeight: '900' },
   utilityModal: { width: '100%', maxWidth: 340, maxHeight: '88%', overflow: 'hidden', borderRadius: 18, backgroundColor: colors.surface },
   utilityModalHero: { height: 238, position: 'relative', backgroundColor: '#25202A' },
@@ -458,6 +546,7 @@ const styles = StyleSheet.create({
   forecastHeading: { marginTop: 18, color: colors.text, fontSize: 13, fontWeight: '800' },
   hourlyRail: { gap: 8, paddingTop: 10, paddingBottom: 4 },
   hourlyItem: { width: 58, alignItems: 'center', paddingVertical: 8, borderRadius: 8, backgroundColor: '#FFF8EC' },
+  hourlyItemRain: { backgroundColor: '#EAF5FF' },
   forecastTime: { color: colors.muted, fontSize: 10 },
   forecastIcon: { marginTop: 7, fontSize: 20 },
   forecastTemp: { marginTop: 5, color: colors.text, fontSize: 12, fontWeight: '800' },

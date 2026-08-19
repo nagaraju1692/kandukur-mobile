@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { AppState } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useDirectory } from './DirectoryContext'
 import { fetchWeather, WeatherReport } from '../services/api'
@@ -13,6 +14,7 @@ export type MobileNotification = {
   detail: string
   description: string
   image?: string
+  expiresAt?: number
 }
 
 type NotificationContextValue = {
@@ -24,29 +26,44 @@ const NotificationContext = createContext<NotificationContextValue | undefined>(
 const dismissedKey = 'mana-kandukur-mobile-dismissed-notifications'
 const clearedAtKey = 'mana-kandukur-mobile-notifications-cleared-at'
 const rainCodes = new Set([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99])
+const kandukurOffsetMs = (5 * 60 + 30) * 60 * 1000
+
+function getKandukurTimeMs(time: string | Date) {
+  if (time instanceof Date) return time.getTime()
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(time)
+  if (!match) return new Date(time).getTime()
+  const [, year, month, day, hour, minute] = match
+  return Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)) - kandukurOffsetMs
+}
 
 function formatRainTime(time: string | Date) {
-  return new Date(time).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })
+  return new Date(getKandukurTimeMs(time)).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' })
+}
+
+function isNotificationExpired(notification: MobileNotification, now: number) {
+  return typeof notification.expiresAt === 'number' && Number.isFinite(notification.expiresAt) && notification.expiresAt <= now
 }
 
 function createRainNotification(weather: WeatherReport): MobileNotification | null {
   const now = Date.now()
   const upcomingHours = weather.hourly
     .map((hour, index) => ({ hour, index }))
-    .filter(({ hour }) => new Date(hour.time).getTime() >= now)
+    .filter(({ hour }) => getKandukurTimeMs(hour.time) >= now)
   const rainStartPosition = upcomingHours.findIndex(({ hour }) => rainCodes.has(hour.code))
   const rainStart = rainStartPosition < 0 ? -1 : upcomingHours[rainStartPosition].index
   if (rainStart < 0) return null
 
   let rainEnd = rainStart
   while (rainEnd + 1 < weather.hourly.length
-    && new Date(weather.hourly[rainEnd + 1].time).getTime() >= now
+    && getKandukurTimeMs(weather.hourly[rainEnd + 1].time) >= now
     && rainCodes.has(weather.hourly[rainEnd + 1].code)) rainEnd += 1
   const start = weather.hourly[rainStart]
   const end = weather.hourly[rainEnd]
   const dateKey = start.time.slice(0, 10)
-  const rainEndTime = new Date(new Date(end.time).getTime() + 60 * 60 * 1000)
+  const rainEndTime = new Date(getKandukurTimeMs(end.time) + 60 * 60 * 1000)
   const timeRange = `${formatRainTime(start.time)} to ${formatRainTime(rainEndTime)}`
+  const expiresAt = rainEndTime.getTime()
+  if (!Number.isFinite(expiresAt) || expiresAt <= now) return null
 
   return {
     id: `weather-rain-${dateKey}`,
@@ -58,11 +75,12 @@ function createRainNotification(weather: WeatherReport): MobileNotification | nu
     detail: `Possible rain: ${timeRange}`,
     description: 'If you are going outside, carry an umbrella. Prefer a car when possible; if travelling by bike, use rain gear and ride carefully.',
     image: 'https://images.unsplash.com/photo-1501691223387-dd0500403074?auto=format&fit=crop&w=1200&q=80',
+    expiresAt,
   }
 }
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
-  const [notifications, setNotifications] = useState<MobileNotification[]>([])
+  const [currentTime, setCurrentTime] = useState(() => Date.now())
   const [dismissed, setDismissed] = useState<string[]>([])
   const [dismissedLoaded, setDismissedLoaded] = useState(false)
   const [clearedAt, setClearedAt] = useState<number | null>(null)
@@ -90,6 +108,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, [])
 
   useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setCurrentTime(Date.now())
+    })
+    return () => subscription.remove()
+  }, [])
+
+  useEffect(() => {
     if (!dismissedLoaded) return
     AsyncStorage.setItem(dismissedKey, JSON.stringify(dismissed)).catch(() => undefined)
   }, [dismissed, dismissedLoaded])
@@ -99,7 +124,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     const loadRainAlert = async () => {
       try {
         const weather = await fetchWeather()
-        if (active) setRainNotification(createRainNotification(weather))
+        if (active) {
+          setCurrentTime(Date.now())
+          setRainNotification(createRainNotification(weather))
+        }
       } catch {
         if (active) setRainNotification(null)
       }
@@ -112,37 +140,86 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   }, [])
 
-  useEffect(() => {
-    if (!dismissedLoaded) return
+    useEffect(() => {
+    const upcomingExpiries: number[] = []
+    const now = Date.now()
+
+    if (rainNotification?.expiresAt && rainNotification.expiresAt > now) {
+      upcomingExpiries.push(rainNotification.expiresAt)
+    }
+
+    announcements.forEach((announcement) => {
+      if (announcement.endDate) {
+        const end = new Date(announcement.endDate).getTime()
+        if (Number.isFinite(end) && end > now) {
+          upcomingExpiries.push(end)
+        }
+      }
+      if (announcement.startDate) {
+        const start = new Date(announcement.startDate).getTime()
+        if (Number.isFinite(start) && start > now) {
+          upcomingExpiries.push(start)
+        }
+      }
+    })
+
+    if (upcomingExpiries.length === 0) return
+
+    const nextExpiry = Math.min(...upcomingExpiries)
+    const timeUntilExpiry = Math.max(0, nextExpiry - Date.now())
+
+    const expiryTimer = setTimeout(() => {
+      setCurrentTime(Date.now())
+      if (rainNotification?.expiresAt && rainNotification.expiresAt <= Date.now()) {
+        setRainNotification(null)
+      }
+    }, timeUntilExpiry)
+
+    return () => clearTimeout(expiryTimer)
+  }, [announcements, rainNotification])
+
+  const notifications = useMemo(() => {
+    if (!dismissedLoaded) return []
     const announcementNotifications = announcements.filter((announcement) => {
       if (dismissed.includes(`announcement-${announcement.id}`)) return false
+      const startDate = announcement.startDate ? new Date(announcement.startDate).getTime() : null
+      const endDate = announcement.endDate ? new Date(announcement.endDate).getTime() : null
+      if (startDate !== null && Number.isFinite(startDate) && startDate > currentTime) return false
+      if (endDate !== null && Number.isFinite(endDate) && endDate <= currentTime) return false
       if (clearedAt === null || !announcement.createdAt) return true
       return new Date(announcement.createdAt).getTime() > clearedAt
-    }).map((announcement) => ({
-      id: `announcement-${announcement.id}`,
-      title: announcement.title,
-      message: `${announcement.detail}.`,
-      time: 'New',
-      type: announcement.type,
-      announcementTitle: announcement.title,
-      detail: announcement.detail,
-      description: announcement.description,
-      image: announcement.image,
-    }))
-    const weatherNotifications = rainNotification && !dismissed.includes(rainNotification.id) ? [rainNotification] : []
-    setNotifications([...weatherNotifications, ...announcementNotifications])
-  }, [announcements, clearedAt, dismissed, dismissedLoaded, rainNotification])
+    }).map((announcement) => {
+      const endDate = announcement.endDate ? new Date(announcement.endDate).getTime() : undefined
+      const expiresAt = typeof endDate === 'number' && Number.isFinite(endDate) ? endDate : undefined
+      return {
+        id: `announcement-${announcement.id}`,
+        title: announcement.title,
+        message: `${announcement.detail}.`,
+        time: 'New',
+        type: announcement.type,
+        announcementTitle: announcement.title,
+        detail: announcement.detail,
+        description: announcement.description,
+        image: announcement.image,
+        expiresAt,
+      }
+    })
+    const weatherNotifications = rainNotification
+      && !isNotificationExpired(rainNotification, currentTime)
+      && !dismissed.includes(rainNotification.id) ? [rainNotification] : []
+    return [...weatherNotifications, ...announcementNotifications]
+  }, [announcements, clearedAt, currentTime, dismissed, dismissedLoaded, rainNotification])
 
-  const clearNotifications = async () => {
+  const clearNotifications = useCallback(async () => {
     const ids = notifications.map((item) => item.id)
     const clearedTimestamp = Date.now()
     setDismissed((current) => Array.from(new Set([...current, ...ids])))
     setClearedAt(clearedTimestamp)
     await AsyncStorage.setItem(clearedAtKey, String(clearedTimestamp)).catch(() => undefined)
-    setNotifications([])
-  }
+    setCurrentTime(clearedTimestamp)
+  }, [notifications])
 
-  const value = useMemo(() => ({ notifications, clearNotifications }), [notifications])
+  const value = useMemo(() => ({ notifications, clearNotifications }), [clearNotifications, notifications])
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>
 }
 

@@ -17,6 +17,10 @@ export default function Search({ navigation, route }: any) {
   const { t, category: categoryLabel, businessName } = useLanguage()
   const { distances, ready, ensureAddresses, sortNearest, location } = useNearby()
   const { businesses } = useDirectory()
+  React.useEffect(() => {
+    setQuery(route.params?.query || '')
+  }, [route.params?.query])
+
   const results = useMemo(() => {
     const normalized = query.trim().toLowerCase()
     if (!normalized) return businesses.slice(0, 30)

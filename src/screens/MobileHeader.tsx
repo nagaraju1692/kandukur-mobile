@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -15,6 +15,18 @@ export default function MobileHeader({ navigation }: { navigation: any }) {
   const isCompact = width < 430
   const [showNotifications, setShowNotifications] = useState(false)
   const [selectedNotification, setSelectedNotification] = useState<typeof notifications[number] | null>(null)
+  const previousNotificationCount = useRef(notifications.length)
+
+  useEffect(() => {
+    if (showNotifications && previousNotificationCount.current > 0 && notifications.length === 0) {
+      setShowNotifications(false)
+      setSelectedNotification(null)
+    }
+    if (selectedNotification && !notifications.some((notification) => notification.id === selectedNotification.id)) {
+      setSelectedNotification(null)
+    }
+    previousNotificationCount.current = notifications.length
+  }, [notifications, selectedNotification, showNotifications])
 
   return (
     <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
